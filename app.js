@@ -31,7 +31,7 @@
 
   /* ---------- state (kept on this phone) ---------- */
   const KEY = "maths-trail-v1";
-  const blank = () => ({ v: 2, skin: "classic", xp: 0, days: {}, q: {}, lessons: {}, badges: {}, sound: true, log: [], prac: { A: { n: 0, ok: 0 }, B: { n: 0, ok: 0 }, C: { n: 0, ok: 0 }, D: { n: 0, ok: 0 } }, fixed: 0, pracDone: 0, best: 0, lessonsDone: 0, iosHintOff: false, tp: { history: [], current: null }, hud: { name: "", assistant: "ARIA", voiceOn: false, lastGreet: null } });
+  const blank = () => ({ v: 2, skin: "hud", xp: 0, days: {}, q: {}, lessons: {}, badges: {}, sound: true, log: [], prac: { A: { n: 0, ok: 0 }, B: { n: 0, ok: 0 }, C: { n: 0, ok: 0 }, D: { n: 0, ok: 0 } }, fixed: 0, pracDone: 0, best: 0, lessonsDone: 0, iosHintOff: false, tp: { history: [], current: null }, hud: { name: "", voiceOn: false, lastGreet: null } });
   let S;
   try { S = JSON.parse(localStorage.getItem(KEY) || "null"); } catch (e) { S = null; }
   S = Object.assign(blank(), S || {});
@@ -447,24 +447,14 @@
     inp.addEventListener("keydown", e => { if (e.key === "Enter" && inp.value.trim()) { e.preventDefault(); btn.click(); } });
     if (!("ontouchstart" in window)) inp.focus();
   }
-  function hudGreeting() {
-    const h = new Date().getHours(), part = h < 12 ? "morning" : h < 18 ? "afternoon" : "evening";
-    return `Good ${part}, ${S.hud.name || "Pilot"}. ${S.hud.assistant || "ARIA"} here. Ready for your IronMath session. Let's go!`;
-  }
-  function pickLocalVoice() {
-    if (!("speechSynthesis" in window)) return null;
-    const voices = speechSynthesis.getVoices().filter(v => v.localService);
-    return voices.find(v => /en-GB/i.test(v.lang)) || voices.find(v => /^en/i.test(v.lang)) || voices[0] || null;
-  }
-  function speakHud(text) {
-    if (!("speechSynthesis" in window)) return false;
-    const voice = pickLocalVoice();
-    if (!voice) return false;
+  const GREET_FILES = { morning: "audio/greet-morning.mp3", afternoon: "audio/greet-afternoon.mp3", evening: "audio/greet-evening.mp3" };
+  const greetFile = () => { const h = new Date().getHours(); return GREET_FILES[h < 12 ? "morning" : h < 18 ? "afternoon" : "evening"]; };
+  let greetAudio = null;
+  function playGreet() {
     try {
-      speechSynthesis.cancel();
-      const u = new SpeechSynthesisUtterance(text);
-      u.voice = voice; u.lang = voice.lang;
-      speechSynthesis.speak(u);
+      if (greetAudio) greetAudio.pause();
+      greetAudio = new Audio(greetFile());
+      greetAudio.play().catch(() => { });
       return true;
     } catch (e) { return false; }
   }
@@ -472,7 +462,7 @@
     if (!isHud() || !S.hud.voiceOn || !S.hud.name) return;
     const t = today();
     if (S.hud.lastGreet === t) return;
-    if (speakHud(hudGreeting())) { S.hud.lastGreet = t; save(); }
+    if (playGreet()) { S.hud.lastGreet = t; save(); }
   }
   function armourHTML() {
     const pieces = ARMOUR.map(a => Object.assign({ on: mastered(a.sec) === secSize(a.sec) }, a));
@@ -732,8 +722,7 @@
       ${isHud() ? `<div class="sec-title">Armour assistant</div>
       <div class="card" style="display:grid;gap:14px">
         <div class="set-row" style="display:block"><b>Pilot name</b><div class="muted" style="font-size:.85rem;font-weight:700;margin-bottom:8px">Used by the voice greeting, stays on this phone</div><input class="ans" id="hudName" value="${esc(S.hud.name)}" placeholder="Your name" maxlength="30" autocomplete="off"></div>
-        <div class="set-row" style="display:block"><b>Assistant name</b><div class="muted" style="font-size:.85rem;font-weight:700;margin-bottom:8px">Daniela picks this</div><input class="ans" id="hudAssistant" value="${esc(S.hud.assistant)}" placeholder="ARIA" maxlength="20" autocomplete="off"></div>
-        <div class="set-row"><div><b>Voice greeting</b><div class="muted" style="font-size:.85rem;font-weight:700">Spoken once a day, local voice only</div></div><button class="switch" role="switch" aria-checked="${S.hud.voiceOn}" data-act="hud-voice" aria-label="Voice greeting"></button></div>
+        <div class="set-row"><div><b>Voice greeting</b><div class="muted" style="font-size:.85rem;font-weight:700">Spoken once a day by IronMath</div></div><button class="switch" role="switch" aria-checked="${S.hud.voiceOn}" data-act="hud-voice" aria-label="Voice greeting"></button></div>
         <button class="btn ghost block" data-act="hud-testvoice">Test voice</button>
       </div>` : ""}
       <div class="sec-title">Backup</div>
@@ -797,7 +786,7 @@
     }
     if (a === "hud-cancel") { HUD_ACT = null; return go("settings"); }
     if (a === "hud-voice") { S.hud.voiceOn = !S.hud.voiceOn; save(); return render(); }
-    if (a === "hud-testvoice") { speakHud(hudGreeting()); return; }
+    if (a === "hud-testvoice") { playGreet(); return; }
     if (a === "install") return installNow();
     if (a === "ioshint") { S.iosHintOff = true; save(); return render(); }
     if (a === "sound") { S.sound = !S.sound; save(); if (S.sound) sfx.good(); return render(); }
@@ -818,7 +807,6 @@
   });
   document.addEventListener("input", e => {
     if (e.target.id === "hudName") { S.hud.name = e.target.value.slice(0, 30); save(); return; }
-    if (e.target.id === "hudAssistant") { S.hud.assistant = e.target.value.slice(0, 20) || "ARIA"; save(); return; }
     if (TP && e.target.matches("input.ans")) {
       const c = S.tp.current; if (c) { const a = c.answers[c.cur] || (c.answers[c.cur] = {}); a[e.target.id] = e.target.value; save(); }
       return;
@@ -846,7 +834,8 @@
   }
 
   if (S.best < streak()) S.best = streak();
-  if (S.tp.current) {
+  if (S.skin === "hud" && !S.hud.name) { HUD_ACT = {}; render(); }
+  else if (S.tp.current) {
     const remaining = S.tp.current.startedAt + S.tp.current.durationMs - Date.now();
     if (remaining <= 0) finishTestPrep(true);
     else { TP = {}; render(); startTPTimer(); }
