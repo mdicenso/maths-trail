@@ -155,7 +155,7 @@
   }
 
   /* ---------- routing ---------- */
-  let route = "learn", L = null, TP = null, HUD_ACT = null, hudPowerUp = false, quitAsk = false, tpTimerId = null;
+  let route = "learn", L = null, TP = null, HUD_ACT = null, LAUNCH = null, quitAsk = false, tpTimerId = null;
   function go(r) { route = r; L = null; render(); window.scrollTo(0, 0); }
   const SKINS = [
     { id: "classic", name: "Classic", bg: "#f6f5fb", fg: "#6d4aff", meta: "#6D4AFF" },
@@ -171,10 +171,11 @@
   }
   function render() {
     applySkin();
-    tabbar.hidden = !!L || !!TP || !!HUD_ACT;
-    view.classList.toggle("lesson", !!L || !!TP || !!HUD_ACT);
-    tabbar.querySelectorAll(".tab").forEach(t => t.setAttribute("aria-current", t.dataset.go === route && !L && !TP && !HUD_ACT ? "page" : "false"));
+    tabbar.hidden = !!L || !!TP || !!HUD_ACT || !!LAUNCH;
+    view.classList.toggle("lesson", !!L || !!TP || !!HUD_ACT || !!LAUNCH);
+    tabbar.querySelectorAll(".tab").forEach(t => t.setAttribute("aria-current", t.dataset.go === route && !L && !TP && !HUD_ACT && !LAUNCH ? "page" : "false"));
     if (L) return;
+    if (LAUNCH) return renderLaunchSplash();
     if (TP) return renderTestPrepRun();
     if (HUD_ACT) return renderHudActivation();
     if (route === "progress") renderProgress();
@@ -224,8 +225,7 @@
       h += `<div class="node-wrap" style="--dx:${dx}px"><button class="node" style="--c:var(--muted)" data-lesson="${l.id}-P" aria-label="Later in Year 8: ${l.name}">${ic("dumb")}</button><div class="node-label">${l.name}</div></div>`;
     });
     h += `</div></section>`;
-    view.innerHTML = hudPowerUp ? `<div class="hud-poweron">${h}</div>` : h;
-    hudPowerUp = false;
+    view.innerHTML = h;
   }
 
   /* ---------- lesson engine ---------- */
@@ -447,6 +447,23 @@
     inp.addEventListener("keydown", e => { if (e.key === "Enter" && inp.value.trim()) { e.preventDefault(); btn.click(); } });
     if (!("ontouchstart" in window)) inp.focus();
   }
+  function renderLaunchSplash() {
+    view.innerHTML = `<button class="launch-splash" data-act="launch-enter" aria-label="Tap to enter IronMath">
+      <img src="icons/icon-512.png" class="launch-icon" alt="">
+      <div class="launch-hint">Tap to enter</div>
+    </button>`;
+    maybeGreet();
+  }
+  function enterApp() {
+    LAUNCH = null;
+    maybeGreet(); // the tap is a real user gesture: a reliable retry if the attempt on render was blocked
+    if (S.tp.current) {
+      const remaining = S.tp.current.startedAt + S.tp.current.durationMs - Date.now();
+      if (remaining <= 0) return finishTestPrep(true);
+      TP = {}; render(); startTPTimer(); return;
+    }
+    render();
+  }
   const GREET_FILES = { morning: "audio/greet-morning.mp3", afternoon: "audio/greet-afternoon.mp3", evening: "audio/greet-evening.mp3" };
   const greetFile = () => { const h = new Date().getHours(); return GREET_FILES[h < 12 ? "morning" : h < 18 ? "afternoon" : "evening"]; };
   let greetAudio = null;
@@ -454,15 +471,14 @@
     try {
       if (greetAudio) greetAudio.pause();
       greetAudio = new Audio(greetFile());
-      greetAudio.play().catch(() => { });
-      return true;
-    } catch (e) { return false; }
+      return greetAudio.play().then(() => true).catch(() => false);
+    } catch (e) { return Promise.resolve(false); }
   }
   function maybeGreet() {
-    if (!isHud() || !S.hud.voiceOn || !S.hud.name) return;
+    if (!S.hud.voiceOn || !S.hud.name) return;
     const t = today();
     if (S.hud.lastGreet === t) return;
-    if (playGreet()) { S.hud.lastGreet = t; save(); }
+    playGreet().then(ok => { if (ok) { S.hud.lastGreet = t; save(); } });
   }
   function armourHTML() {
     const pieces = ARMOUR.map(a => Object.assign({ on: mastered(a.sec) === secSize(a.sec) }, a));
@@ -719,12 +735,12 @@
         <div class="set-row"><div><b>Sounds</b><div class="muted" style="font-size:.85rem;font-weight:700">Beeps for right and wrong answers</div></div><button class="switch" role="switch" aria-checked="${S.sound}" data-act="sound" aria-label="Sounds"></button></div>
         <div class="set-row" style="display:block"><b>Install on your phone</b>${inst}</div>
       </div>
-      ${isHud() ? `<div class="sec-title">Armour assistant</div>
+      <div class="sec-title">IronMath assistant</div>
       <div class="card" style="display:grid;gap:14px">
         <div class="set-row" style="display:block"><b>Pilot name</b><div class="muted" style="font-size:.85rem;font-weight:700;margin-bottom:8px">Used by the voice greeting, stays on this phone</div><input class="ans" id="hudName" value="${esc(S.hud.name)}" placeholder="Your name" maxlength="30" autocomplete="off"></div>
         <div class="set-row"><div><b>Voice greeting</b><div class="muted" style="font-size:.85rem;font-weight:700">Spoken once a day by IronMath</div></div><button class="switch" role="switch" aria-checked="${S.hud.voiceOn}" data-act="hud-voice" aria-label="Voice greeting"></button></div>
         <button class="btn ghost block" data-act="hud-testvoice">Test voice</button>
-      </div>` : ""}
+      </div>
       <div class="sec-title">Backup</div>
       <div class="card" style="display:grid;gap:10px">
         <p class="muted" style="margin:0;font-weight:700">Your progress is saved on this phone only. Copy this code to move it to another phone, or to keep it safe.</p>
@@ -781,10 +797,11 @@
     if (a === "hud-activate") {
       const inp = $("#hudActName"), v = inp ? inp.value.trim() : "";
       if (!v) return;
-      S.hud.name = v.slice(0, 30); S.skin = "hud"; HUD_ACT = null; hudPowerUp = true; save();
+      S.hud.name = v.slice(0, 30); HUD_ACT = null; save();
       return go("learn");
     }
     if (a === "hud-cancel") { HUD_ACT = null; return go("settings"); }
+    if (a === "launch-enter") return enterApp();
     if (a === "hud-voice") { S.hud.voiceOn = !S.hud.voiceOn; save(); return render(); }
     if (a === "hud-testvoice") { playGreet(); return; }
     if (a === "install") return installNow();
@@ -834,11 +851,7 @@
   }
 
   if (S.best < streak()) S.best = streak();
-  if (S.skin === "hud" && !S.hud.name) { HUD_ACT = {}; render(); }
-  else if (S.tp.current) {
-    const remaining = S.tp.current.startedAt + S.tp.current.durationMs - Date.now();
-    if (remaining <= 0) finishTestPrep(true);
-    else { TP = {}; render(); startTPTimer(); }
-  } else render();
+  if (!S.hud.name) { HUD_ACT = {}; render(); }
+  else { LAUNCH = {}; render(); }
   window.__mt = { S: () => S, startById: startById, LESSONS: LESSONS, setSkin: id => { S.skin = id; save(); render(); }, startTestPrep: startTestPrep };
 })();

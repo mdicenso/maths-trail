@@ -294,8 +294,16 @@ textarea { width: 100%; font: inherit; font-size: 0.8rem; border: 2px solid var(
 .hud-activate h1 { font-family: var(--font-display, inherit); letter-spacing: .08em; font-size: 1.3rem; color: var(--hud-core, var(--brand)); }
 .hud-activate input.ans { max-width: 280px; text-align: center; }
 .hud-activate .btn { max-width: 280px; width: 100%; }
-@keyframes hudPowerOn { from { filter: brightness(2.6) saturate(0); opacity: 0; } to { filter: none; opacity: 1; } }
-.hud-poweron { animation: hudPowerOn .9s ease-out both; }
+/* launch splash: shown on every app open (after the one-time name capture), in every skin. Fixed
+   colours on purpose (not skin tokens) — it shows the app's own icon, not a themed screen. */
+.launch-splash { position: fixed; inset: 0; z-index: 90; background: #000; display: grid; place-items: center; cursor: pointer; border: 0; padding: 0; margin: 0; }
+.launch-icon { width: 136px; height: 136px; border-radius: 30px; animation: launchPulse 2.2s ease-in-out infinite; }
+@keyframes launchPulse {
+  0%, 100% { transform: scale(1); filter: drop-shadow(0 0 10px #00f2fe80) drop-shadow(0 0 28px #00f2fe4d); }
+  50% { transform: scale(1.07); filter: drop-shadow(0 0 16px #00f2fecc) drop-shadow(0 0 48px #00f2fe80); }
+}
+.launch-hint { position: absolute; bottom: calc(env(safe-area-inset-bottom, 0px) + 36px); color: #8b97a3; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; font-size: .78rem; animation: launchHint 1.8s ease-in-out infinite; }
+@keyframes launchHint { 50% { opacity: .35; } }
 
 /* HUD frame around a question */
 .hud-frame { position: relative; border: 1px solid color-mix(in srgb, var(--hud-core) 55%, var(--line)); padding: 14px 14px 8px; margin-bottom: 14px; box-shadow: 0 0 0 1px color-mix(in srgb, var(--hud-core) 20%, transparent) inset; }
