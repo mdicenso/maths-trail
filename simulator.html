@@ -111,7 +111,7 @@ textarea { width: 100%; min-height: 220px; font: inherit; font-size: .9rem; colo
 <div class="bench">
   <section class="stage" aria-label="App">
     <div class="holder" id="holder"><div class="device" id="device"><span class="notch"></span><div class="screen"><div class="sbar" aria-hidden="true"><span>9:41</span><i></i></div><iframe id="app" src="index.html" title="IronMath app"></iframe></div></div></div>
-    <div class="caption" id="cap">IronMath 2.2 · iPhone 390×844</div>
+    <div class="caption" id="cap">IronMath 2.3 · iPhone 390×844</div>
   </section>
 
   <aside class="panel">
@@ -145,7 +145,7 @@ textarea { width: 100%; min-height: 220px; font: inherit; font-size: .9rem; colo
     const s = Math.min(1, availW / fw, narrow ? 1 : availH / fh);
     d.style.transform = `scale(${s})`;
     $("#holder").style.width = fw * s + "px"; $("#holder").style.height = fh * s + "px";
-    $("#cap").textContent = `IronMath 2.2 · ${$(`[data-dev="${dev}"]`).textContent} · scala ${Math.round(s * 100)}%`;
+    $("#cap").textContent = `IronMath 2.3 · ${$(`[data-dev="${dev}"]`).textContent} · scala ${Math.round(s * 100)}%`;
   }
   window.addEventListener("resize", layout);
 
@@ -192,7 +192,7 @@ textarea { width: 100%; min-height: 220px; font: inherit; font-size: .9rem; colo
 
   /* ---------- content ---------- */
   const STAGES = [
-    { n: 1, name: "Installazione", status: ["todo", "Da fare"], goal: "Dal link all'icona sulla Home in meno di 2 minuti.", now: "Banner \"Install\" su Android; istruzioni per iPhone in Settings.", risk: "App non ancora pubblicata. Su iPhone il passo è manuale.", show: () => reloadApp(() => click('[data-go="settings"]')), label: "Mostra le istruzioni" },
+    { n: 1, name: "Installazione", status: ["part", "Parziale"], goal: "Dal link all'icona sulla Home in meno di 2 minuti.", now: "Banner \"Install\" su Android; istruzioni per iPhone in Settings.", risk: "Online dal 10 ottobre. Su iPhone il passo è manuale (Safari → Condividi). Da verificare sul telefono di Daniela.", show: () => reloadApp(() => click('[data-go="settings"]')), label: "Mostra le istruzioni" },
     { n: 2, name: "Primo avvio", status: ["gap", "Lacuna"], goal: "Capire cosa fare e arrivare al primo \"Correct!\" entro 60 secondi.", now: "Si apre sul percorso con la bolla START.", risk: "Nessuna introduzione: XP, serie di giorni e Practice non spiegati.", show: () => { setState(null); reloadApp(() => toast("Stato azzerato: questo è il primo avvio")); }, label: "Simula il primo avvio" },
     { n: 3, name: "Lezione", status: ["part", "Parziale"], goal: "Imparare dagli errori, non solo contare le giuste.", now: "Una domanda alla volta, errori riproposti, procedimento dopo la risposta.", risk: "Nessun aiuto prima di rispondere: se si blocca tira a indovinare.", show: () => reloadApp(() => click('[data-lesson="A-0"]')), label: "Apri una lezione" },
     { n: 4, name: "Abitudine", status: ["part", "Parziale"], goal: "10 minuti al giorno per tre settimane.", now: "Obiettivo 30 XP, serie di giorni, badge.", risk: "Obiettivo fisso, nessun promemoria.", show: () => { setState(demoState("week")); reloadApp(() => toast("Dati demo: dopo una settimana")); }, label: "Mostra dopo 1 settimana" },

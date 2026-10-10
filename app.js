@@ -1,7 +1,7 @@
 /* IronMath - app: lesson path, one-question lesson flow, XP, streaks, badges, progress report, settings. */
 "use strict";
 (function () {
-  const VERSION = "2.2.0";
+  const VERSION = "2.3.0";
   const $ = s => document.querySelector(s);
   const view = $("#view"), tabbar = $("#tabbar");
 
@@ -25,7 +25,7 @@
 
   /* ---------- state (kept on this phone) ---------- */
   const KEY = "maths-trail-v1";
-  const blank = () => ({ v: 2, skin: "classic", xp: 0, days: {}, q: {}, lessons: {}, badges: {}, sound: true, log: [], prac: { A: { n: 0, ok: 0 }, B: { n: 0, ok: 0 }, C: { n: 0, ok: 0 }, D: { n: 0, ok: 0 } }, fixed: 0, pracDone: 0, best: 0, lessonsDone: 0, iosHintOff: false });
+  const blank = () => ({ v: 2, skin: "classic", xp: 0, days: {}, q: {}, lessons: {}, badges: {}, sound: true, log: [], prac: { A: { n: 0, ok: 0 }, B: { n: 0, ok: 0 }, C: { n: 0, ok: 0 }, D: { n: 0, ok: 0 } }, fixed: 0, pracDone: 0, best: 0, lessonsDone: 0, iosHintOff: false, tp: { history: [], current: null } });
   let S;
   try { S = JSON.parse(localStorage.getItem(KEY) || "null"); } catch (e) { S = null; }
   S = Object.assign(blank(), S || {});
@@ -139,7 +139,7 @@
   }
 
   /* ---------- routing ---------- */
-  let route = "learn", L = null, quitAsk = false;
+  let route = "learn", L = null, TP = null, quitAsk = false, tpTimerId = null;
   function go(r) { route = r; L = null; render(); window.scrollTo(0, 0); }
   const SKINS = [
     { id: "classic", name: "Classic", bg: "#f6f5fb", fg: "#6d4aff", meta: "#6D4AFF" },
@@ -154,12 +154,14 @@
   }
   function render() {
     applySkin();
-    tabbar.hidden = !!L;
-    view.classList.toggle("lesson", !!L);
-    tabbar.querySelectorAll(".tab").forEach(t => t.setAttribute("aria-current", t.dataset.go === route && !L ? "page" : "false"));
+    tabbar.hidden = !!L || !!TP;
+    view.classList.toggle("lesson", !!L || !!TP);
+    tabbar.querySelectorAll(".tab").forEach(t => t.setAttribute("aria-current", t.dataset.go === route && !L && !TP ? "page" : "false"));
     if (L) return;
+    if (TP) return renderTestPrepRun();
     if (route === "progress") renderProgress();
     else if (route === "settings") renderSettings();
+    else if (route === "testprep") renderTestPrepIntro();
     else renderHome();
   }
 
@@ -181,6 +183,7 @@
     const cur = currentLessonId(), mist = mistakes();
     let h = topbar();
     h += `<div class="card goal"><div class="ring" style="--p:${pct}" data-label="${pct}%"></div><div><h3>${todayXp >= GOAL ? "Daily goal done!" : "Daily goal"}</h3><p class="muted">${todayXp} / ${GOAL} XP today${todayXp >= GOAL ? ". Keep the streak going tomorrow." : ""}</p></div></div>`;
+    h += testPrepHomeCard();
     if (deferredPrompt && !standalone()) h += `<div class="card banner"><p>Install IronMath<small>Open it from your home screen, even offline.</small></p><button class="btn small" data-act="install">Install</button></div>`;
     else if (isIOS() && !standalone() && !S.iosHintOff) h += `<div class="card banner"><p>Add it to your home screen<small>Tap Share, then "Add to Home Screen".</small></p><button class="btn ghost small" data-act="ioshint">OK</button></div>`;
     if (mist.length) h += `<div class="card banner fix"><p>Fix your mistakes<small>${mist.length} question${mist.length > 1 ? "s" : ""} to try again</small></p><button class="btn bad small" data-act="review">Fix</button></div>`;
@@ -407,6 +410,207 @@
     feedback("partial", `<div class="fb-head"><span class="badge">${ic("x")}</span>Leave this lesson?</div><div class="fb-body">You keep the XP you have earned so far.</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><button class="btn ghost" data-act="stay">Keep going</button><button class="btn bad" data-act="leave">Leave</button></div>`);
   }
 
+  /* ---------- test prep: a timed mixed-unit mock test ----------
+     TESTPREP.pool is the list of sections the test draws from: change it (and extend TESTPREP_LEVELS
+     for any new section) to reuse this for Test 2 later. The question count and the time limit are the
+     two constants to change for a different test. */
+  const TESTPREP = { n: 20, minutes: 30, pool: ["A", "B", "C", "D"] };
+  // One entry per generator in GENS[sec] (same order), 1 = Core, 2 = Challenge. No 0 (Warm-up): the few
+  // Warm-up questions in a test come from the fixed "gap filler" questions below (types no generator covers).
+  const TESTPREP_LEVELS = {
+    A: [1, 1, 1, 2, 1, 1, 2], // ×÷ by powers of ten, dec×dec, negatives, BIDMAS, round dp, round sf, estimate
+    B: [1, 1, 2, 1, 2, 1, 1], // power, root, prime factors, HCF/LCM, bus LCM, power laws, divisibility
+    C: [1, 1, 2, 1, 2, 1, 1], // convert, area, area-from-area, volume, surface area, litres, cube
+    D: [1, 1, 1, 2, 2, 1, 2]  // hypotenuse, other side, right-angled?, ladder/Ali, prism volume, diagonal, acute/obtuse
+  };
+  const testprepTypeCache = {};
+  function coveredTypesFor(sec) {
+    if (testprepTypeCache[sec]) return testprepTypeCache[sec];
+    const types = new Set();
+    (GENS[sec] || []).forEach(g => { for (let i = 0; i < 5; i++) { try { g().parts.forEach(p => types.add(p.t)); } catch (e) { } } });
+    return testprepTypeCache[sec] = types;
+  }
+  function gapFillerPool(sec) {
+    const covered = coveredTypesFor(sec);
+    return Q.filter(q => q.sec === sec && !q.parts.some(p => p.t === "self") && q.parts.some(p => !covered.has(p.t)));
+  }
+  function snapshotFixed(q) { return { id: q.id, sec: q.sec, gen: false, lvl: q.lvl, q: q.q, parts: q.parts, sol: q.sol, ans: q.ans, fig: FIG[q.id] || null }; }
+  function distributeEvenly(total, n) {
+    if (n <= 0) return [];
+    const base = Math.floor(total / n), extra = total % n;
+    return Array.from({ length: n }, (_, i) => base + (i < extra ? 1 : 0));
+  }
+  function buildGeneratedSlots(secs, countNeeded) {
+    const perSec = distributeEvenly(countNeeded, secs.length), out = [];
+    secs.forEach((s, si) => {
+      const targets = [];
+      for (let k = 0; k < perSec[si]; k++) targets.push(k % 2 === 0 ? 1 : 2); // alternate Core/Challenge
+      targets.sort(() => Math.random() - 0.5);
+      targets.forEach(lv => {
+        const levels = TESTPREP_LEVELS[s] || [];
+        const idxs = (GENS[s] || []).map((_, gi) => gi).filter(gi => levels[gi] === lv);
+        const gi = idxs.length ? pick(idxs) : rnd(0, (GENS[s] || []).length - 1);
+        out.push(Object.assign(GENS[s][gi](), { lvl: lv }));
+      });
+    });
+    return out;
+  }
+  function buildTestPrepPool() {
+    const secs = TESTPREP.pool.filter(s => GENS[s] && GENS[s].length);
+    if (!secs.length) return [];
+    const gapItems = [];
+    secs.forEach(s => { const gp = gapFillerPool(s); if (gp.length) gapItems.push(snapshotFixed(pick(gp))); });
+    const genItems = buildGeneratedSlots(secs, Math.max(0, TESTPREP.n - gapItems.length));
+    const all = gapItems.concat(genItems);
+    for (let i = all.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1));[all[i], all[j]] = [all[j], all[i]]; }
+    return all;
+  }
+  function startTestPrep() {
+    const pool = buildTestPrepPool(); if (!pool.length) return;
+    S.tp.current = { startedAt: Date.now(), durationMs: TESTPREP.minutes * 60000, pool: pool, answers: pool.map(() => ({})), cur: 0 };
+    save(); TP = {}; render(); startTPTimer();
+  }
+  function fmtMs(ms) { const s = Math.max(0, Math.ceil(ms / 1000)), m = Math.floor(s / 60); return `${m}:${String(s % 60).padStart(2, "0")}`; }
+  function stopTPTimer() { if (tpTimerId) { clearInterval(tpTimerId); tpTimerId = null; } }
+  function startTPTimer() {
+    stopTPTimer();
+    tpTimerId = setInterval(() => {
+      const c = S.tp.current;
+      if (!TP || !c) return stopTPTimer();
+      const remaining = c.startedAt + c.durationMs - Date.now();
+      if (remaining <= 0) { stopTPTimer(); return finishTestPrep(true); }
+      updateTPTimerDisplay(remaining);
+    }, 1000);
+  }
+  function updateTPTimerDisplay(ms) {
+    const el = $("#tpTimer"); if (!el) return;
+    el.textContent = fmtMs(ms); el.classList.toggle("warn", ms < 5 * 60000);
+  }
+  function testPrepHomeCard() {
+    if (S.tp.current) {
+      const c = S.tp.current;
+      return `<div class="card banner" style="margin-bottom:16px"><p>Test prep in progress<small>Question ${c.cur + 1} of ${c.pool.length} · tap to continue</small></p><button class="btn small" data-act="tp-continue">Continue</button></div>`;
+    }
+    const hist = S.tp.history, best = hist.length ? Math.max(...hist.map(e => Math.round(e.score / e.total * 100))) : null;
+    return `<div class="card banner" style="margin-bottom:16px"><p>Test prep<small>${TESTPREP.n} questions · ${TESTPREP.minutes} min · no calculator${best !== null ? ` · best ${best}%` : " · most useful after a few lessons"}</small></p><button class="btn small" data-act="tp-intro">Start</button></div>`;
+  }
+  function testPrepHistoryHTML(limit) {
+    const hist = S.tp.history.slice(0, limit || 10);
+    if (!hist.length) return `<p class="muted" style="margin:0;font-weight:700">No attempts yet.</p>`;
+    return `<div class="log">${hist.map(e => `<div class="log-row"><span class="dot ${e.score / e.total >= 0.8 ? "" : e.score / e.total >= 0.5 ? "partial" : "bad"}"></span><span><b>${e.score}/${e.total}</b> <code>${Object.keys(e.bySec).map(s => `${s} ${e.bySec[s].ok}/${e.bySec[s].n}`).join(" · ")}</code></span><span class="muted" style="font-size:.8rem">${new Date(e.at).toLocaleDateString(undefined, { day: "numeric", month: "short" })}</span></div>`).join("")}</div>`;
+  }
+  function renderTestPrepIntro() {
+    let h = topbar();
+    h += `<div class="card" style="display:grid;gap:14px;text-align:center;padding:28px 16px">
+      <h1 style="margin:0">Test prep</h1>
+      <p class="muted" style="margin:0">${TESTPREP.n} questions · ${TESTPREP.minutes} minutes · no calculator</p>
+      <p class="muted" style="margin:0;font-size:.88rem">Mixed questions from Units 1–4. You will not see right or wrong until the end, just like the real test. The timer keeps running even if you close the app or lock your phone.</p>
+      <button class="btn block" data-act="tp-start">Start</button>
+    </div>`;
+    h += `<div class="sec-title">Past attempts</div><div class="card">${testPrepHistoryHTML()}</div>`;
+    view.innerHTML = h;
+  }
+  function renderTestPrepRun() {
+    const c = S.tp.current; if (!c) { TP = null; return render(); }
+    const idx = c.cur, q = c.pool[idx], remaining = c.startedAt + c.durationMs - Date.now(), keys = keysFor(q);
+    const answered = c.answers.map(a => Object.values(a || {}).some(v => String(v).trim()));
+    view.innerHTML = `
+      <div class="lesson-top"><button class="icon-btn" data-act="tp-pause" aria-label="Save and go home">${ic("x")}</button>
+        <div class="tp-timer" id="tpTimer">${fmtMs(remaining)}</div>
+        <span class="muted" style="margin-left:auto;font-weight:800">${idx + 1}/${c.pool.length}</span></div>
+      <div class="tp-grid">${c.pool.map((_, i) => `<button class="tp-cell ${i === idx ? "cur" : ""} ${answered[i] ? "done" : ""}" data-tp-go="${i}" aria-label="Question ${i + 1}">${i + 1}</button>`).join("")}</div>
+      <div class="q-tag" style="--c:${COLORS[q.sec]}">${secName(q.sec)}</div>
+      <div class="prompt">${fmt(q.q)}</div>
+      ${q.fig ? `<div class="fig">${q.fig}</div>` : ""}
+      <div class="parts">${partInputs(q)}</div>
+      ${keys.length ? `<div class="keys" aria-label="Symbols">${keys.map(k => `<button class="key" data-key="${esc(k)}" tabindex="-1">${esc(k)}</button>`).join("")}</div>` : ""}
+      <div class="lesson-spacer"></div>
+      <div class="lesson-foot"><div class="inner" style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <button class="btn ghost" data-act="tp-prev" ${idx === 0 ? "disabled" : ""}>Back</button>
+        <button class="btn" data-act="tp-next">${idx === c.pool.length - 1 ? "Finish" : "Next"}</button>
+      </div></div>`;
+    const ans = c.answers[idx] || {};
+    Object.keys(ans).forEach(id => { const el = document.getElementById(id); if (el) el.value = ans[id]; });
+    const first = view.querySelector("input.ans");
+    lastInput = first;
+    if (first && !("ontouchstart" in window)) first.focus();
+    updateTPTimerDisplay(remaining);
+  }
+  function evalPart(p, i, answersObj) {
+    if (p.t === "venn") {
+      let allOk = true, given = [];
+      p.regions.forEach(r => {
+        const v = (answersObj[`p-${i}-${r.k}`] || "").trim();
+        const res = !v ? { st: "bad" } : (r.t === "set" ? checkSet(v, { a: r.a }) : checkNum(v, { a: String(r.a) }));
+        if (res.st !== "ok") allOk = false;
+        given.push(`${r.k}: ${v || "–"}`);
+      });
+      return { ok: allOk, given: given.join(", "), reason: null };
+    }
+    const v = (answersObj[`p-${i}`] || "").trim();
+    if (!v) return { ok: false, given: "–", reason: "No answer given." };
+    const res = CHECK[p.t](v, p);
+    return { ok: res.st === "ok", given: (p.l ? p.l + " " : "") + v, reason: res.st === "ok" ? null : (res.msg || null) };
+  }
+  function scoreTestPrep(session) {
+    const perQuestion = session.pool.map((q, qi) => {
+      const ansObj = session.answers[qi] || {}, parts = q.parts.map((p, i) => evalPart(p, i, ansObj));
+      return { q: q, parts: parts, ok: parts.every(r => r.ok) };
+    });
+    const bySec = {}; let score = 0, total = 0;
+    perQuestion.forEach(r => {
+      const b = bySec[r.q.sec] || (bySec[r.q.sec] = { ok: 0, n: 0 });
+      r.parts.forEach(pr => { b.n++; total++; if (pr.ok) { b.ok++; score++; } });
+    });
+    return { perQuestion: perQuestion, bySec: bySec, score: score, total: total };
+  }
+  const formatGivenAnswer = r => r.parts.map(p => p.given).join("  ");
+  function finishTestPrep(auto) {
+    stopTPTimer(); const session = S.tp.current; TP = null;
+    if (!session) return go("learn");
+    const result = scoreTestPrep(session);
+    result.perQuestion.forEach(r => {
+      if (r.ok || r.q.gen) return;
+      const s = Object.assign({ status: "todo", tries: 0, seen: false }, S.q[r.q.id]);
+      if (s.status !== "correct") s.status = "wrong";
+      s.tries = (s.tries || 0) + 1; s.at = Date.now();
+      S.q[r.q.id] = s;
+    });
+    S.tp.history.unshift({ at: Date.now(), score: result.score, total: result.total, bySec: result.bySec, auto: !!auto });
+    if (S.tp.history.length > 10) S.tp.history.length = 10;
+    commitXp(5);
+    S.best = Math.max(S.best, streak());
+    S.tp.current = null;
+    checkBadges(); save();
+    renderTestPrepResults(result, auto);
+  }
+  function renderTestPrepResults(result, auto) {
+    const pct = Math.round(result.score / result.total * 100), wrong = result.perQuestion.filter(r => !r.ok);
+    let h = `<div class="result" style="padding-top:40px">
+      <h1>${auto ? "Time's up!" : "Test prep done"}</h1>
+      <div class="tiles" style="grid-template-columns:1fr">
+        <div class="tile" style="--c:var(--brand)"><div class="t">Score</div><div class="v">${result.score}/${result.total} · ${pct}%</div></div>
+      </div>
+      <div class="secs" style="width:100%">${TESTPREP.pool.filter(s => result.bySec[s]).map(s => { const b = result.bySec[s]; return `<div class="card" style="text-align:left"><b style="color:${COLORS[s]}">${secName(s)}</b><br><span class="muted">${b.ok}/${b.n}</span></div>`; }).join("")}</div>
+      <button class="btn block" data-act="tp-close">Continue</button>
+    </div>`;
+    if (wrong.length) {
+      h += `<div class="sec-title">Fix your mistakes (${wrong.length})</div><div style="display:grid;gap:12px;margin-bottom:24px">`;
+      wrong.forEach(r => {
+        const reason = r.parts.map(p => p.reason).filter(Boolean)[0];
+        h += `<div class="card"><div class="q-tag" style="--c:${COLORS[r.q.sec]}">${secName(r.q.sec)}</div>
+          <div class="prompt" style="font-size:1rem">${fmt(r.q.q)}</div>
+          <p style="margin:6px 0"><span class="muted" style="font-weight:900">Your answer:</span> ${esc(formatGivenAnswer(r))}</p>
+          <p style="margin:6px 0"><span class="muted" style="font-weight:900">Correct answer:</span> ${fmt(r.q.ans)}</p>
+          ${reason ? `<p class="muted" style="margin:6px 0">${esc(reason)}</p>` : ""}
+          <div class="working">${fmt(r.q.sol)}</div></div>`;
+      });
+      h += `</div>`;
+    }
+    view.innerHTML = h;
+    tabbar.hidden = true; view.classList.add("lesson");
+  }
+
   /* ---------- progress report ---------- */
   function renderProgress() {
     const lv = level(), inLv = S.xp % 100, st = streak();
@@ -426,6 +630,7 @@
       <div class="card mini" style="--c:var(--brand)">${ic("check")}<div><b style="color:var(--brand)">${totalM}/${Q.length}</b><span>questions mastered</span></div></div></div>`;
     h += `<div class="sec-title">Last 14 days</div><div class="card"><div class="week">${days.map(k => { const v = S.days[k] || 0, isT = k === today(); const dd = new Date(k + "T12:00:00"); return `<div class="col" title="${k}: ${v} XP"><div class="b ${v ? "" : "zero"} ${isT ? "today" : ""}" style="height:${Math.max(4, Math.round(v / max * 80))}px"></div><span class="d">${"SMTWTFS"[dd.getDay()]}</span></div>`; }).join("")}</div><p class="muted" style="margin:8px 0 0;font-size:.85rem;font-weight:700">XP per day · daily goal ${GOAL} XP</p></div>`;
     h += `<div class="sec-title">Sections</div><div class="secs">${SECTIONS.map(s => { const m = mastered(s.id), n = secSize(s.id), pc = Math.round(m / n * 100); const pr = S.prac[s.id] || { n: 0, ok: 0 }; return `<button class="card" data-unit="${s.id}" style="text-align:left;cursor:pointer"><div class="ring" style="--p:${pc};--c:${COLORS[s.id]}" data-label="${pc}%"></div><div><b>${s.name}</b><small>${m}/${n} done${pr.n ? ` · practice ${Math.round(pr.ok / pr.n * 100)}%` : ""}</small></div></button>`; }).join("")}</div>`;
+    h += `<div class="sec-title">Test prep history</div><div class="card">${testPrepHistoryHTML()}</div>`;
     h += `<div class="sec-title">Still to fix ${mist.length ? `(${mist.length})` : ""}</div><div class="card">${mist.length ? `<div class="chips">${mist.map(id => `<button class="chip" style="--c:${COLORS[id[0]]}" data-fix="${id}">${id}</button>`).join("")}</div><div style="margin-top:12px"><button class="btn bad block" data-act="review">Fix them now</button></div>` : `<p class="muted" style="margin:0;font-weight:700">Nothing to fix. Every question you missed has been put right.</p>`}</div>`;
     h += `<div class="sec-title">Badges</div><div class="badges">${BADGES.map(b => `<div class="bdg ${S.badges[b.id] ? "on" : ""}" style="--c:${b.c}" title="${esc(b.desc)}"><div class="medal">${ic(S.badges[b.id] ? b.icon : "lock")}</div>${esc(b.name)}</div>`).join("")}</div>`;
     const rows = S.log.slice(0, 10);
@@ -470,6 +675,7 @@
     if (t.dataset.skin) { S.skin = t.dataset.skin; save(); return render(); }
     if (t.dataset.lesson) return startById(t.dataset.lesson);
     if (t.dataset.fix) return startReview([t.dataset.fix]);
+    if (t.dataset.tpGo !== undefined) { const c = S.tp.current; if (c) { c.cur = +t.dataset.tpGo; save(); render(); } return; }
     if (t.dataset.unit) { go("learn"); const u = document.getElementById("unit-" + t.dataset.unit); if (u) u.scrollIntoView({ behavior: reduced() ? "auto" : "smooth" }); return; }
     if (t.dataset.key && lastInput) {
       const k = t.dataset.key, el = lastInput, s = el.selectionStart ?? el.value.length, en = el.selectionEnd ?? el.value.length;
@@ -490,6 +696,13 @@
     if (a === "leave") { quitAsk = false; if (L) { commitXp(L.xp); const st = streak(); S.best = Math.max(S.best, st); checkBadges(); save(); } return go("learn"); }
     if (a === "home") return go("learn");
     if (a === "review") return startReview();
+    if (a === "tp-intro") return go("testprep");
+    if (a === "tp-continue") { TP = {}; render(); startTPTimer(); return; }
+    if (a === "tp-start") return startTestPrep();
+    if (a === "tp-pause") { TP = null; stopTPTimer(); return go("learn"); }
+    if (a === "tp-prev") { const c = S.tp.current; if (c) { c.cur = Math.max(0, c.cur - 1); save(); render(); } return; }
+    if (a === "tp-next") { const c = S.tp.current; if (!c) return; if (c.cur === c.pool.length - 1) return finishTestPrep(false); c.cur = Math.min(c.pool.length - 1, c.cur + 1); save(); render(); return; }
+    if (a === "tp-close") { view.classList.remove("lesson"); return go("learn"); }
     if (a === "install") return installNow();
     if (a === "ioshint") { S.iosHintOff = true; save(); return render(); }
     if (a === "sound") { S.sound = !S.sound; save(); if (S.sound) sfx.good(); return render(); }
@@ -509,6 +722,10 @@
     }
   });
   document.addEventListener("input", e => {
+    if (TP && e.target.matches("input.ans")) {
+      const c = S.tp.current; if (c) { const a = c.answers[c.cur] || (c.answers[c.cur] = {}); a[e.target.id] = e.target.value; save(); }
+      return;
+    }
     if (!L || !e.target.matches("input.ans")) return;
     const b = $("#checkBtn"); if (b) b.disabled = !anyFilled();
     if (L.state === "ask") e.target.classList.remove("ok", "bad", "partial");
@@ -532,6 +749,10 @@
   }
 
   if (S.best < streak()) S.best = streak();
-  render();
-  window.__mt = { S: () => S, startById: startById, LESSONS: LESSONS, setSkin: id => { S.skin = id; save(); render(); } };
+  if (S.tp.current) {
+    const remaining = S.tp.current.startedAt + S.tp.current.durationMs - Date.now();
+    if (remaining <= 0) finishTestPrep(true);
+    else { TP = {}; render(); startTPTimer(); }
+  } else render();
+  window.__mt = { S: () => S, startById: startById, LESSONS: LESSONS, setSkin: id => { S.skin = id; save(); render(); }, startTestPrep: startTestPrep };
 })();

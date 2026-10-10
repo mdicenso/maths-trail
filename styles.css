@@ -179,6 +179,14 @@ h1, h2, h3 { margin: 0; line-height: 1.15; text-wrap: balance; }
 .shake { animation: shake .4s ease; }
 @keyframes shake { 20%, 60% { transform: translateX(-8px); } 40%, 80% { transform: translateX(8px); } }
 
+/* ---- test prep ---- */
+.tp-timer { font-weight: 900; font-variant-numeric: tabular-nums; font-size: 1.05rem; padding: 6px 12px; border-radius: 999px; background: var(--surface); border: 2px solid var(--line); }
+.tp-timer.warn { color: var(--bad); border-color: var(--bad); }
+.tp-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(36px, 1fr)); gap: 6px; margin-bottom: 18px; }
+.tp-cell { aspect-ratio: 1; border-radius: 10px; border: 2px solid var(--line); background: var(--surface); color: var(--muted); font-weight: 900; font-size: 0.82rem; cursor: pointer; padding: 0; }
+.tp-cell.done { background: var(--good-soft); border-color: var(--good); color: var(--good-dark); }
+.tp-cell.cur { border-color: var(--brand); color: var(--brand); box-shadow: 0 0 0 2px color-mix(in srgb, var(--brand) 35%, transparent); }
+
 /* ---- results ---- */
 .result { text-align: center; display: grid; gap: 18px; justify-items: center; padding-top: 72px; }
 .result h1 { font-size: 2rem; font-weight: 900; color: var(--sun); }
