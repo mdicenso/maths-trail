@@ -1,7 +1,7 @@
 /* IronMath service worker: cache the app so it opens offline. Bump VERSION on every release. */
-const VERSION = "mt-2.3.0";
+const VERSION = "mt-2.4.0";
 const FILES = ["./", "index.html", "styles.css", "data.js", "engine.js", "gen.js", "gen_u.js", "app.js", "manifest.webmanifest",
-  "fonts/nunito-latin-wght-normal.woff2", "fonts/orbitron-latin-800-normal.woff2", "fonts/exo-2-latin-800-normal.woff2", "fonts/rajdhani-latin-700-normal.woff2", "icons/icon-192.png", "icons/icon-512.png", "icons/maskable-512.png", "icons/apple-touch-icon.png"];
+  "fonts/nunito-latin-wght-normal.woff2", "fonts/orbitron-latin-800-normal.woff2", "fonts/exo-2-latin-800-normal.woff2", "fonts/rajdhani-latin-700-normal.woff2", "fonts/audiowide-latin-400-normal.woff2", "icons/icon-192.png", "icons/icon-512.png", "icons/maskable-512.png", "icons/apple-touch-icon.png"];
 self.addEventListener("install", e => {
   e.waitUntil(caches.open(VERSION).then(c => c.addAll(FILES)).then(() => self.skipWaiting()));
 });

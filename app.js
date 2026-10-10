@@ -1,7 +1,7 @@
 /* IronMath - app: lesson path, one-question lesson flow, XP, streaks, badges, progress report, settings. */
 "use strict";
 (function () {
-  const VERSION = "2.3.0";
+  const VERSION = "2.4.0";
   const $ = s => document.querySelector(s);
   const view = $("#view"), tabbar = $("#tabbar");
 
@@ -19,13 +19,19 @@
     book: "M5 3h11a3 3 0 0 1 3 3v15H7a2 2 0 0 1-2-2zm2 14v2h10v-2z",
     sound: "M4 9h4l5-4v14l-5-4H4zm12.5-1.5a6 6 0 0 1 0 9l-1.4-1.4a4 4 0 0 0 0-6.2z",
     lock: "M7 10V7a5 5 0 0 1 10 0v3h1a1 1 0 0 1 1 1v10H5V11a1 1 0 0 1 1-1zm2 0h6V7a3 3 0 0 0-6 0z",
-    gear: "M12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7Zm8.3 4.9-1.9 1.1.1 2.2-2.2 1.3-1.9-1.1-1.9 1.1h-2.6l-1.9-1.1-1.9 1.1-2.2-1.3.1-2.2-1.9-1.1v-2.8l1.9-1.1-.1-2.2 2.2-1.3 1.9 1.1L10.7 4h2.6l1.9 1.1 1.9-1.1 2.2 1.3-.1 2.2 1.9 1.1Z"
+    gear: "M12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7Zm8.3 4.9-1.9 1.1.1 2.2-2.2 1.3-1.9-1.1-1.9 1.1h-2.6l-1.9-1.1-1.9 1.1-2.2-1.3.1-2.2-1.9-1.1v-2.8l1.9-1.1-.1-2.2 2.2-1.3 1.9 1.1L10.7 4h2.6l1.9 1.1 1.9-1.1 2.2 1.3-.1 2.2 1.9 1.1Z",
+    mic: "M12 15a3.5 3.5 0 0 0 3.5-3.5V6a3.5 3.5 0 0 0-7 0v5.5A3.5 3.5 0 0 0 12 15Zm5.5-3.5a5.5 5.5 0 0 1-11 0H4.5a7.5 7.5 0 0 0 6.5 7.43V22h2v-3.07a7.5 7.5 0 0 0 6.5-7.43Z",
+    gloves: "M6 3a2 2 0 0 1 2 2v4.1l1-2.6a1.4 1.4 0 0 1 2.6 1L10.3 11H11l1.4-3a1.4 1.4 0 0 1 2.6 1.1L13.8 12l1.6-1.6a1.4 1.4 0 0 1 2 2L13.5 16.3c-.9.9-2 1.4-3.3 1.4H9a5 5 0 0 1-5-5V5a2 2 0 0 1 2-2Z",
+    boots: "M7 2h5v7.3c0 .8.3 1.5.9 2.1l4.3 4.3c.9.9.4 2.3-.8 2.3H5a2 2 0 0 1-2-2v-2.4c0-.9.5-1.7 1.3-2.1L7 10.1V2Z",
+    chest: "M12 2 20 5v6c0 5-3.4 8.7-8 9-4.6-.3-8-4-8-9V5l8-3Zm0 3.2L7 7v4c0 3.4 2.1 6 5 6.4V5.2Z",
+    helmet: "M12 2c5 0 8.5 3.8 8.5 9v4a2 2 0 0 1-2 2h-1.2a1 1 0 0 1-.9-.6L15 13h-1v4a1 1 0 0 1-1 1h-2a1 1 0 0 1-1-1v-4h-1l-1.4 3.4a1 1 0 0 1-.9.6H5.5a2 2 0 0 1-2-2v-4C3.5 5.8 7 2 12 2Zm-3.5 8h7v-1.5h-7V10Z",
+    thruster: "M9 2h6l1 7-1 3H9l-1-3 1-7Zm-1 12h8l1.6 5.5a1 1 0 0 1-1 1.3L12 19l-4.6 1.8a1 1 0 0 1-1-1.3L8 14Z"
   };
   const ic = (n, cls) => `<svg viewBox="0 0 24 24" aria-hidden="true"${cls ? ` class="${cls}"` : ""}><path d="${ICON[n]}"/></svg>`;
 
   /* ---------- state (kept on this phone) ---------- */
   const KEY = "maths-trail-v1";
-  const blank = () => ({ v: 2, skin: "classic", xp: 0, days: {}, q: {}, lessons: {}, badges: {}, sound: true, log: [], prac: { A: { n: 0, ok: 0 }, B: { n: 0, ok: 0 }, C: { n: 0, ok: 0 }, D: { n: 0, ok: 0 } }, fixed: 0, pracDone: 0, best: 0, lessonsDone: 0, iosHintOff: false, tp: { history: [], current: null } });
+  const blank = () => ({ v: 2, skin: "classic", xp: 0, days: {}, q: {}, lessons: {}, badges: {}, sound: true, log: [], prac: { A: { n: 0, ok: 0 }, B: { n: 0, ok: 0 }, C: { n: 0, ok: 0 }, D: { n: 0, ok: 0 } }, fixed: 0, pracDone: 0, best: 0, lessonsDone: 0, iosHintOff: false, tp: { history: [], current: null }, hud: { name: "", assistant: "ARIA", voiceOn: false, lastGreet: null } });
   let S;
   try { S = JSON.parse(localStorage.getItem(KEY) || "null"); } catch (e) { S = null; }
   S = Object.assign(blank(), S || {});
@@ -43,6 +49,16 @@
   const GOAL = 30;
   const level = () => Math.floor(S.xp / 100) + 1;
   const COLORS = { A: "var(--A)", B: "var(--B)", C: "var(--C)", D: "var(--D)", E: "var(--E)", LA: "var(--muted)", LB: "var(--muted)", LC: "var(--muted)", LD: "var(--muted)" };
+  const ARMOUR = [
+    { sec: "A", key: "gloves", name: "Gauntlets" },
+    { sec: "B", key: "boots", name: "Boots" },
+    { sec: "C", key: "chest", name: "Chestplate" },
+    { sec: "D", key: "helmet", name: "Helmet" },
+    { sec: "E", key: "thruster", name: "Thrusters" }
+  ];
+  const isHud = () => S.skin === "hud";
+  const xpWord = () => isHud() ? "Energy" : "XP";
+  const streakWord = () => isHud() ? "Overdrive" : "day streak";
   const LATER = [{ id: "LA", key: "A", name: "Ratio & mixed skills" }, { id: "LB", key: "B", name: "Algebra" }, { id: "LC", key: "C", name: "Angles & circles" }, { id: "LD", key: "D", name: "Probability" }];
   const HEX = ["#ff8a1f", "#8b5cf6", "#10b3a3", "#f43f73", "#ffb020", "#2bb673"];
 
@@ -139,26 +155,28 @@
   }
 
   /* ---------- routing ---------- */
-  let route = "learn", L = null, TP = null, quitAsk = false, tpTimerId = null;
+  let route = "learn", L = null, TP = null, HUD_ACT = null, hudPowerUp = false, quitAsk = false, tpTimerId = null;
   function go(r) { route = r; L = null; render(); window.scrollTo(0, 0); }
   const SKINS = [
     { id: "classic", name: "Classic", bg: "#f6f5fb", fg: "#6d4aff", meta: "#6D4AFF" },
     { id: "forge", name: "Forge", bg: "#121216", fg: "#e5372a", meta: "#121216" },
     { id: "lab", name: "Lab", bg: "#0a1120", fg: "#22d3ee", meta: "#0a1120" },
-    { id: "steel", name: "Steel", bg: "#f2f3f5", fg: "#c71f1f", meta: "#c71f1f" }
+    { id: "steel", name: "Steel", bg: "#f2f3f5", fg: "#c71f1f", meta: "#c71f1f" },
+    { id: "hud", name: "HUD", bg: "#0b0c10", fg: "#f5b942", meta: "#0b0c10" }
   ];
   function applySkin() {
-    const sk = SKINS.find(s => s.id === S.skin) || SKINS[0];
+    const sk = HUD_ACT ? SKINS.find(s => s.id === "hud") : SKINS.find(s => s.id === S.skin) || SKINS[0];
     if (sk.id === "classic") document.documentElement.removeAttribute("data-skin"); else document.documentElement.dataset.skin = sk.id;
     const m = document.querySelector('meta[name="theme-color"]'); if (m) m.setAttribute("content", sk.meta);
   }
   function render() {
     applySkin();
-    tabbar.hidden = !!L || !!TP;
-    view.classList.toggle("lesson", !!L || !!TP);
-    tabbar.querySelectorAll(".tab").forEach(t => t.setAttribute("aria-current", t.dataset.go === route && !L && !TP ? "page" : "false"));
+    tabbar.hidden = !!L || !!TP || !!HUD_ACT;
+    view.classList.toggle("lesson", !!L || !!TP || !!HUD_ACT);
+    tabbar.querySelectorAll(".tab").forEach(t => t.setAttribute("aria-current", t.dataset.go === route && !L && !TP && !HUD_ACT ? "page" : "false"));
     if (L) return;
     if (TP) return renderTestPrepRun();
+    if (HUD_ACT) return renderHudActivation();
     if (route === "progress") renderProgress();
     else if (route === "settings") renderSettings();
     else if (route === "testprep") renderTestPrepIntro();
@@ -175,14 +193,14 @@
   function topbar() {
     const st = streak(), todayXp = S.days[today()] || 0;
     return `<div class="topbar"><div class="brand">Iron<b>Math</b></div><div class="stats">
-      <span class="stat flame ${todayXp > 0 ? "" : "off"}" title="Day streak">${ic("flame")}${st}</span>
-      <span class="stat xp" title="Total XP">${ic("bolt")}${S.xp}</span></div></div>`;
+      <span class="stat flame ${todayXp > 0 ? "" : "off"}" title="${streakWord()}">${ic("flame")}${st}</span>
+      <span class="stat xp" title="Total ${xpWord()}">${ic("bolt")}${S.xp}</span></div></div>`;
   }
   function renderHome() {
     const todayXp = S.days[today()] || 0, pct = Math.min(100, Math.round(todayXp / GOAL * 100));
     const cur = currentLessonId(), mist = mistakes();
     let h = topbar();
-    h += `<div class="card goal"><div class="ring" style="--p:${pct}" data-label="${pct}%"></div><div><h3>${todayXp >= GOAL ? "Daily goal done!" : "Daily goal"}</h3><p class="muted">${todayXp} / ${GOAL} XP today${todayXp >= GOAL ? ". Keep the streak going tomorrow." : ""}</p></div></div>`;
+    h += `<div class="card goal"><div class="ring" style="--p:${pct}" data-label="${pct}%"></div><div><h3>${todayXp >= GOAL ? "Daily goal done!" : "Daily goal"}</h3><p class="muted">${todayXp} / ${GOAL} ${xpWord()} today${todayXp >= GOAL ? `. Keep the ${streakWord()} going tomorrow.` : ""}</p></div></div>`;
     h += testPrepHomeCard();
     if (deferredPrompt && !standalone()) h += `<div class="card banner"><p>Install IronMath<small>Open it from your home screen, even offline.</small></p><button class="btn small" data-act="install">Install</button></div>`;
     else if (isIOS() && !standalone() && !S.iosHintOff) h += `<div class="card banner"><p>Add it to your home screen<small>Tap Share, then "Add to Home Screen".</small></p><button class="btn ghost small" data-act="ioshint">OK</button></div>`;
@@ -206,7 +224,8 @@
       h += `<div class="node-wrap" style="--dx:${dx}px"><button class="node" style="--c:var(--muted)" data-lesson="${l.id}-P" aria-label="Later in Year 8: ${l.name}">${ic("dumb")}</button><div class="node-label">${l.name}</div></div>`;
     });
     h += `</div></section>`;
-    view.innerHTML = h;
+    view.innerHTML = hudPowerUp ? `<div class="hud-poweron">${h}</div>` : h;
+    hudPowerUp = false;
   }
 
   /* ---------- lesson engine ---------- */
@@ -269,9 +288,11 @@
     view.innerHTML = `
       <div class="lesson-top"><button class="icon-btn" data-act="quit" aria-label="Quit lesson">${ic("x")}</button><div class="bar" role="progressbar" aria-valuenow="${pct}" aria-valuemin="0" aria-valuemax="100"><i style="width:${pct}%"></i></div><span class="combo" id="combo">${L.combo >= 2 ? `${L.combo}× ` : ""}</span></div>
       <div class="q-tag ${L.cur.again ? "again" : ""}" style="--c:${COLORS[q.sec]}">${L.cur.again ? `${ic("refresh")} Try this one again` : `${secName(q.sec)}${q.gen ? " · practice" : ` · ${q.id}`}`}</div>
+      ${isHud() ? `<div class="hud-frame">` : ""}
       <div class="prompt">${fmt(q.q)}</div>
       ${fig ? `<div class="fig">${fig}</div>` : ""}
       <div class="parts">${partInputs(q)}</div>
+      ${isHud() ? `</div>` : ""}
       ${keys.length ? `<div class="keys" aria-label="Symbols">${keys.map(k => `<button class="key" data-key="${esc(k)}" tabindex="-1">${esc(k)}</button>`).join("")}</div>` : ""}
       ${self ? `<p class="muted">Work this out on paper, then check the answer.</p>` : ""}
       <div class="lesson-spacer"></div>
@@ -343,7 +364,8 @@
     const bar = view.querySelector(".bar i"); if (bar) bar.style.width = `${Math.round(L.done / L.total * 100)}%`;
     const cb = $("#combo"); if (cb && L.combo >= 2) { cb.textContent = `${L.combo}× `; cb.classList.remove("pop"); void cb.offsetWidth; cb.classList.add("pop"); }
     if ([3, 5, 8, 12].includes(L.combo)) toast(`${ic("flame")} ${L.combo} in a row!`);
-    feedback("ok", `<div class="fb-head"><span class="badge">${ic("check")}</span>${PRAISE[Math.floor(Math.random() * PRAISE.length)]} <span style="margin-left:auto;font-size:1rem">+${gain} XP</span></div>${notes && notes.length ? `<div class="fb-body">${esc(notes[0])}</div>` : ""}${workingHTML(q)}<button class="btn block good" data-act="continue">Continue</button>`);
+    const praise = isHud() ? "TARGET ACQUIRED" : PRAISE[Math.floor(Math.random() * PRAISE.length)];
+    feedback("ok", `<div class="fb-head${isHud() ? " target" : ""}"><span class="badge">${ic("check")}</span>${praise} <span style="margin-left:auto;font-size:1rem">+${gain} ${xpWord()}</span></div>${notes && notes.length ? `<div class="fb-body">${esc(notes[0])}</div>` : ""}${workingHTML(q)}<button class="btn block good" data-act="continue">Continue</button>`);
   }
   function onPartial(msgs, ans) {
     logIt(L.cur.q, "partial", ans); save();
@@ -390,7 +412,7 @@
       <h1>${perfect ? "Perfect lesson!" : L.kind === "review" ? "Mistakes fixed!" : "Lesson complete!"}</h1>
       <p class="muted" style="margin:0">${L.title}${L.sec ? ` · ${secName(L.sec)}` : ""}</p>
       <div class="tiles">
-        <div class="tile" style="--c:var(--sun)"><div class="t">Total XP</div><div class="v" id="xpCount">0</div></div>
+        <div class="tile" style="--c:var(--sun)"><div class="t">Total ${xpWord()}</div><div class="v" id="xpCount">0</div></div>
         <div class="tile" style="--c:var(--good)"><div class="t">Accuracy</div><div class="v">${Math.round(acc * 100)}%</div></div>
         <div class="tile" style="--c:var(--brand)"><div class="t">Time</div><div class="v">${time}</div></div>
       </div>
@@ -402,12 +424,64 @@
     const el = $("#xpCount"); const t0 = performance.now();
     (function count(t) { const k = Math.min(1, (t - t0) / 900); el.textContent = Math.round(total * k); if (k < 1) requestAnimationFrame(count); })(t0);
     sfx.win(); confetti();
-    if (!hadToday && after > before) setTimeout(() => toast(`${ic("flame")} ${after}-day streak!`), 600);
+    if (!hadToday && after > before) setTimeout(() => toast(isHud() ? `${ic("flame")} ${after}-day Overdrive!` : `${ic("flame")} ${after}-day streak!`), 600);
     fresh.forEach(b => setTimeout(() => toast(`${ic(b.icon)} Badge: ${b.name}`), 900));
   }
   function showQuit() {
     quitAsk = true;
     feedback("partial", `<div class="fb-head"><span class="badge">${ic("x")}</span>Leave this lesson?</div><div class="fb-body">You keep the XP you have earned so far.</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><button class="btn ghost" data-act="stay">Keep going</button><button class="btn bad" data-act="leave">Leave</button></div>`);
+  }
+
+  /* ---------- HUD skin: one-time armour activation + optional local voice greeting ---------- */
+  function renderHudActivation() {
+    view.innerHTML = `<div class="hud-activate">
+      <button class="icon-btn" data-act="hud-cancel" aria-label="Cancel" style="justify-self:start">${ic("x")}</button>
+      <div class="hud-core" aria-hidden="true"></div>
+      <h1>ARMOUR OFFLINE</h1>
+      <p class="muted">Enter a name to power up the suit.</p>
+      <input class="ans" id="hudActName" placeholder="Your name" autocomplete="off" autocapitalize="words" maxlength="30">
+      <button class="btn block" data-act="hud-activate" id="hudActBtn" disabled>Activate</button>
+    </div>`;
+    const inp = $("#hudActName"), btn = $("#hudActBtn");
+    inp.addEventListener("input", () => { btn.disabled = !inp.value.trim(); });
+    inp.addEventListener("keydown", e => { if (e.key === "Enter" && inp.value.trim()) { e.preventDefault(); btn.click(); } });
+    if (!("ontouchstart" in window)) inp.focus();
+  }
+  function hudGreeting() {
+    const h = new Date().getHours(), part = h < 12 ? "morning" : h < 18 ? "afternoon" : "evening";
+    return `Good ${part}, ${S.hud.name || "Pilot"}. ${S.hud.assistant || "ARIA"} here. Ready for your IronMath session. Let's go!`;
+  }
+  function pickLocalVoice() {
+    if (!("speechSynthesis" in window)) return null;
+    const voices = speechSynthesis.getVoices().filter(v => v.localService);
+    return voices.find(v => /en-GB/i.test(v.lang)) || voices.find(v => /^en/i.test(v.lang)) || voices[0] || null;
+  }
+  function speakHud(text) {
+    if (!("speechSynthesis" in window)) return false;
+    const voice = pickLocalVoice();
+    if (!voice) return false;
+    try {
+      speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(text);
+      u.voice = voice; u.lang = voice.lang;
+      speechSynthesis.speak(u);
+      return true;
+    } catch (e) { return false; }
+  }
+  function maybeGreet() {
+    if (!isHud() || !S.hud.voiceOn || !S.hud.name) return;
+    const t = today();
+    if (S.hud.lastGreet === t) return;
+    if (speakHud(hudGreeting())) { S.hud.lastGreet = t; save(); }
+  }
+  function armourHTML() {
+    const pieces = ARMOUR.map(a => Object.assign({ on: mastered(a.sec) === secSize(a.sec) }, a));
+    const n = pieces.filter(p => p.on).length;
+    return `<div class="sec-title">Armour</div><div class="card armour">
+      <div class="armour-head"><b>${n ? `Armour Mk ${n}` : "Armour — offline"}</b><span class="muted">${n}/5 pieces</span></div>
+      <div class="armour-grid">${pieces.map(p => `<div class="armour-piece ${p.on ? "on" : ""}"><div class="ap-icon">${ic(p.key)}</div><span>${p.name}</span></div>`).join("")}</div>
+      ${n < 5 ? `<p class="muted" style="margin:10px 0 0;font-size:.82rem;font-weight:700">Finish every question in a unit to unlock its piece.</p>` : `<p class="muted" style="margin:10px 0 0;font-size:.82rem;font-weight:700">Full suit online.</p>`}
+    </div>`;
   }
 
   /* ---------- test prep: a timed mixed-unit mock test ----------
@@ -622,14 +696,15 @@
     const max = Math.max(GOAL, ...days.map(k => S.days[k] || 0));
     const mist = mistakes();
     let h = topbar();
-    h += `<div class="card hero"><div class="ring" style="--p:${inLv}" data-label="Lv ${lv}"></div><div><h1>Level ${lv}</h1><p class="muted" style="margin:4px 0 0;font-weight:700">${S.xp} XP in total · ${100 - inLv} XP to level ${lv + 1}</p></div></div>`;
+    h += `<div class="card hero"><div class="ring" style="--p:${inLv}" data-label="Lv ${lv}"></div><div><h1>Level ${lv}</h1><p class="muted" style="margin:4px 0 0;font-weight:700">${S.xp} ${xpWord()} in total · ${100 - inLv} ${xpWord()} to level ${lv + 1}</p></div></div>`;
     h += `<div class="grid2">
-      <div class="card mini" style="--c:var(--flame)">${ic("flame")}<div><b style="color:var(--flame)">${st}</b><span>day streak</span></div></div>
-      <div class="card mini" style="--c:var(--sun)">${ic("trophy")}<div><b style="color:var(--sun)">${S.best}</b><span>best streak</span></div></div>
+      <div class="card mini" style="--c:var(--flame)">${ic("flame")}<div><b style="color:var(--flame)">${st}</b><span>${streakWord()}</span></div></div>
+      <div class="card mini" style="--c:var(--sun)">${ic("trophy")}<div><b style="color:var(--sun)">${S.best}</b><span>best ${streakWord()}</span></div></div>
       <div class="card mini" style="--c:var(--good)">${ic("target")}<div><b style="color:var(--good)">${recent.length ? acc + "%" : "–"}</b><span>accuracy (last 100)</span></div></div>
       <div class="card mini" style="--c:var(--brand)">${ic("check")}<div><b style="color:var(--brand)">${totalM}/${Q.length}</b><span>questions mastered</span></div></div></div>`;
-    h += `<div class="sec-title">Last 14 days</div><div class="card"><div class="week">${days.map(k => { const v = S.days[k] || 0, isT = k === today(); const dd = new Date(k + "T12:00:00"); return `<div class="col" title="${k}: ${v} XP"><div class="b ${v ? "" : "zero"} ${isT ? "today" : ""}" style="height:${Math.max(4, Math.round(v / max * 80))}px"></div><span class="d">${"SMTWTFS"[dd.getDay()]}</span></div>`; }).join("")}</div><p class="muted" style="margin:8px 0 0;font-size:.85rem;font-weight:700">XP per day · daily goal ${GOAL} XP</p></div>`;
+    h += `<div class="sec-title">Last 14 days</div><div class="card"><div class="week">${days.map(k => { const v = S.days[k] || 0, isT = k === today(); const dd = new Date(k + "T12:00:00"); return `<div class="col" title="${k}: ${v} ${xpWord()}"><div class="b ${v ? "" : "zero"} ${isT ? "today" : ""}" style="height:${Math.max(4, Math.round(v / max * 80))}px"></div><span class="d">${"SMTWTFS"[dd.getDay()]}</span></div>`; }).join("")}</div><p class="muted" style="margin:8px 0 0;font-size:.85rem;font-weight:700">${xpWord()} per day · daily goal ${GOAL} ${xpWord()}</p></div>`;
     h += `<div class="sec-title">Sections</div><div class="secs">${SECTIONS.map(s => { const m = mastered(s.id), n = secSize(s.id), pc = Math.round(m / n * 100); const pr = S.prac[s.id] || { n: 0, ok: 0 }; return `<button class="card" data-unit="${s.id}" style="text-align:left;cursor:pointer"><div class="ring" style="--p:${pc};--c:${COLORS[s.id]}" data-label="${pc}%"></div><div><b>${s.name}</b><small>${m}/${n} done${pr.n ? ` · practice ${Math.round(pr.ok / pr.n * 100)}%` : ""}</small></div></button>`; }).join("")}</div>`;
+    if (isHud()) h += armourHTML();
     h += `<div class="sec-title">Test prep history</div><div class="card">${testPrepHistoryHTML()}</div>`;
     h += `<div class="sec-title">Still to fix ${mist.length ? `(${mist.length})` : ""}</div><div class="card">${mist.length ? `<div class="chips">${mist.map(id => `<button class="chip" style="--c:${COLORS[id[0]]}" data-fix="${id}">${id}</button>`).join("")}</div><div style="margin-top:12px"><button class="btn bad block" data-act="review">Fix them now</button></div>` : `<p class="muted" style="margin:0;font-weight:700">Nothing to fix. Every question you missed has been put right.</p>`}</div>`;
     h += `<div class="sec-title">Badges</div><div class="badges">${BADGES.map(b => `<div class="bdg ${S.badges[b.id] ? "on" : ""}" style="--c:${b.c}" title="${esc(b.desc)}"><div class="medal">${ic(S.badges[b.id] ? b.icon : "lock")}</div>${esc(b.name)}</div>`).join("")}</div>`;
@@ -654,6 +729,13 @@
         <div class="set-row"><div><b>Sounds</b><div class="muted" style="font-size:.85rem;font-weight:700">Beeps for right and wrong answers</div></div><button class="switch" role="switch" aria-checked="${S.sound}" data-act="sound" aria-label="Sounds"></button></div>
         <div class="set-row" style="display:block"><b>Install on your phone</b>${inst}</div>
       </div>
+      ${isHud() ? `<div class="sec-title">Armour assistant</div>
+      <div class="card" style="display:grid;gap:14px">
+        <div class="set-row" style="display:block"><b>Pilot name</b><div class="muted" style="font-size:.85rem;font-weight:700;margin-bottom:8px">Used by the voice greeting, stays on this phone</div><input class="ans" id="hudName" value="${esc(S.hud.name)}" placeholder="Your name" maxlength="30" autocomplete="off"></div>
+        <div class="set-row" style="display:block"><b>Assistant name</b><div class="muted" style="font-size:.85rem;font-weight:700;margin-bottom:8px">Daniela picks this</div><input class="ans" id="hudAssistant" value="${esc(S.hud.assistant)}" placeholder="ARIA" maxlength="20" autocomplete="off"></div>
+        <div class="set-row"><div><b>Voice greeting</b><div class="muted" style="font-size:.85rem;font-weight:700">Spoken once a day, local voice only</div></div><button class="switch" role="switch" aria-checked="${S.hud.voiceOn}" data-act="hud-voice" aria-label="Voice greeting"></button></div>
+        <button class="btn ghost block" data-act="hud-testvoice">Test voice</button>
+      </div>` : ""}
       <div class="sec-title">Backup</div>
       <div class="card" style="display:grid;gap:10px">
         <p class="muted" style="margin:0;font-weight:700">Your progress is saved on this phone only. Copy this code to move it to another phone, or to keep it safe.</p>
@@ -670,9 +752,13 @@
 
   /* ---------- events ---------- */
   document.addEventListener("click", async e => {
+    maybeGreet();
     const t = e.target.closest("button"); if (!t) return;
     if (t.dataset.go) return go(t.dataset.go);
-    if (t.dataset.skin) { S.skin = t.dataset.skin; save(); return render(); }
+    if (t.dataset.skin) {
+      if (t.dataset.skin === "hud" && !S.hud.name) { HUD_ACT = {}; return render(); }
+      S.skin = t.dataset.skin; save(); return render();
+    }
     if (t.dataset.lesson) return startById(t.dataset.lesson);
     if (t.dataset.fix) return startReview([t.dataset.fix]);
     if (t.dataset.tpGo !== undefined) { const c = S.tp.current; if (c) { c.cur = +t.dataset.tpGo; save(); render(); } return; }
@@ -703,6 +789,15 @@
     if (a === "tp-prev") { const c = S.tp.current; if (c) { c.cur = Math.max(0, c.cur - 1); save(); render(); } return; }
     if (a === "tp-next") { const c = S.tp.current; if (!c) return; if (c.cur === c.pool.length - 1) return finishTestPrep(false); c.cur = Math.min(c.pool.length - 1, c.cur + 1); save(); render(); return; }
     if (a === "tp-close") { view.classList.remove("lesson"); return go("learn"); }
+    if (a === "hud-activate") {
+      const inp = $("#hudActName"), v = inp ? inp.value.trim() : "";
+      if (!v) return;
+      S.hud.name = v.slice(0, 30); S.skin = "hud"; HUD_ACT = null; hudPowerUp = true; save();
+      return go("learn");
+    }
+    if (a === "hud-cancel") { HUD_ACT = null; return go("settings"); }
+    if (a === "hud-voice") { S.hud.voiceOn = !S.hud.voiceOn; save(); return render(); }
+    if (a === "hud-testvoice") { speakHud(hudGreeting()); return; }
     if (a === "install") return installNow();
     if (a === "ioshint") { S.iosHintOff = true; save(); return render(); }
     if (a === "sound") { S.sound = !S.sound; save(); if (S.sound) sfx.good(); return render(); }
@@ -722,6 +817,8 @@
     }
   });
   document.addEventListener("input", e => {
+    if (e.target.id === "hudName") { S.hud.name = e.target.value.slice(0, 30); save(); return; }
+    if (e.target.id === "hudAssistant") { S.hud.assistant = e.target.value.slice(0, 20) || "ARIA"; save(); return; }
     if (TP && e.target.matches("input.ans")) {
       const c = S.tp.current; if (c) { const a = c.answers[c.cur] || (c.answers[c.cur] = {}); a[e.target.id] = e.target.value; save(); }
       return;
