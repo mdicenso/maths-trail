@@ -1,0 +1,267 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>IronMath Simulator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* Layout: a device bench. Phone on the left (the real app in an iframe), a review panel on the right: journey stages, scenarios, UX checklist, notes. Stacks on narrow screens. */
+:root {
+  --bg: #eef0f4; --panel: #ffffff; --ink: #1d2230; --muted: #636b7e; --line: #dde1ea;
+  --accent: #6d4aff; --accent-soft: rgba(109, 74, 255, .10);
+  --ok: #1f8a57; --ok-soft: #dcf3e7; --gap: #c2410c; --gap-soft: #fde8dc; --part: #a16207; --part-soft: #fdf2d3; --todo: #475569; --todo-soft: #e8ecf2;
+  --device: #15161b;
+  --font: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif; --mono: "IBM Plex Mono", ui-monospace, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #12141a; --panel: #1b1e27; --ink: #e8eaf1; --muted: #9aa1b4; --line: #2d3240; --accent: #9a85ff; --accent-soft: rgba(154, 133, 255, .14);
+  --ok: #4fc38a; --ok-soft: #173326; --gap: #fb8a5a; --gap-soft: #3b2216; --part: #e7b543; --part-soft: #362b12; --todo: #a5b0c4; --todo-soft: #262b37; --device: #000; color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #12141a; --panel: #1b1e27; --ink: #e8eaf1; --muted: #9aa1b4; --line: #2d3240; --accent: #9a85ff; --accent-soft: rgba(154, 133, 255, .14);
+  --ok: #4fc38a; --ok-soft: #173326; --gap: #fb8a5a; --gap-soft: #3b2216; --part: #e7b543; --part-soft: #362b12; --todo: #a5b0c4; --todo-soft: #262b37; --device: #000; color-scheme: dark; }
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--font); font-size: 15px; line-height: 1.45; }
+.top { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; padding: 12px 16px; border-bottom: 1px solid var(--line); background: var(--panel); }
+.top h1 { font-size: 1.05rem; margin: 0; font-weight: 700; letter-spacing: -.01em; }
+.top h1 span { color: var(--accent); }
+.top .sp { flex: 1; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.seg button { font: inherit; font-size: .85rem; border: 0; background: transparent; color: var(--ink); padding: 6px 10px; cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--accent); color: #fff; }
+.btn { font: inherit; font-size: .85rem; font-weight: 600; border: 1px solid var(--line); background: var(--panel); color: var(--ink); border-radius: 8px; padding: 6px 12px; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.btn:focus-visible, .seg button:focus-visible, .tab:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.bench { display: grid; grid-template-columns: minmax(0, 1fr) minmax(320px, 440px); gap: 0; min-height: calc(100% - 58px); }
+.stage { display: flex; flex-direction: column; align-items: center; padding: 20px 16px; gap: 10px; min-width: 0; }
+.caption { font-size: .8rem; color: var(--muted); font-family: var(--mono); }
+.holder { position: relative; }
+.device { position: absolute; left: 0; top: 0; transform-origin: top left; background: var(--device); border-radius: 46px; padding: 14px; box-shadow: 0 20px 50px rgba(0, 0, 0, .25), inset 0 0 0 2px #2a2c33; }
+.device.tablet { border-radius: 28px; padding: 18px; }
+.screen { border-radius: 34px; overflow: hidden; background: #f6f5fb; }
+.device.tablet .screen { border-radius: 12px; }
+.device iframe { display: block; border: 0; background: #f6f5fb; }
+.sbar { height: 47px; display: flex; align-items: center; justify-content: space-between; padding: 0 30px 0 34px; font: 600 15px/1 -apple-system, "Segoe UI", system-ui, sans-serif; color: #111; background: #f6f5fb; }
+.device.android .sbar { height: 30px; padding: 0 18px; font-size: 13px; }
+.device.tablet .sbar { height: 24px; padding: 0 18px; font-size: 12px; }
+.sbar i { display: inline-block; width: 24px; height: 11px; border: 1.5px solid #111; border-radius: 3px; position: relative; }
+.sbar i::after { content: ""; position: absolute; inset: 1.5px 5px 1.5px 1.5px; background: #111; border-radius: 1px; }
+.notch { position: absolute; top: 24px; left: 50%; transform: translateX(-50%); width: 110px; height: 28px; border-radius: 16px; background: #000; z-index: 2; pointer-events: none; }
+.device.tablet .notch, .device.android .notch { width: 12px; height: 12px; border-radius: 50%; top: 24px; }
+.panel { background: var(--panel); border-left: 1px solid var(--line); display: flex; flex-direction: column; min-width: 0; }
+.tabs { display: flex; border-bottom: 1px solid var(--line); overflow-x: auto; }
+.tab { font: inherit; font-size: .88rem; font-weight: 600; border: 0; background: none; color: var(--muted); padding: 12px 14px; cursor: pointer; border-bottom: 2px solid transparent; white-space: nowrap; }
+.tab[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--accent); }
+.pane { padding: 16px; display: grid; gap: 12px; overflow-y: auto; align-content: start; }
+.lead { margin: 0; color: var(--muted); font-size: .9rem; max-width: 62ch; }
+.st { border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; display: grid; gap: 6px; }
+.st.active { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.st-h { display: flex; align-items: center; gap: 10px; }
+.st-h b { font-size: .95rem; }
+.st-h .n { font-family: var(--mono); font-size: .8rem; color: var(--muted); width: 1.4em; }
+.pill { margin-left: auto; font-size: .72rem; font-weight: 700; border-radius: 999px; padding: 2px 9px; white-space: nowrap; }
+.pill.ok { color: var(--ok); background: var(--ok-soft); } .pill.gap { color: var(--gap); background: var(--gap-soft); }
+.pill.part { color: var(--part); background: var(--part-soft); } .pill.todo { color: var(--todo); background: var(--todo-soft); }
+.st dl { margin: 0; display: grid; grid-template-columns: 4.6em 1fr; gap: 3px 10px; font-size: .86rem; }
+.st dt { color: var(--muted); }
+.st dd { margin: 0; min-width: 0; }
+.st .risk { color: var(--gap); }
+.st .act { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
+.sc { border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; display: grid; gap: 6px; }
+.sc p { margin: 0; font-size: .86rem; color: var(--muted); }
+.chk { display: grid; gap: 2px; }
+.chk label { display: flex; gap: 10px; align-items: flex-start; padding: 8px 0; border-bottom: 1px solid var(--line); font-size: .9rem; cursor: pointer; }
+.chk input { margin-top: 3px; accent-color: var(--accent); width: 16px; height: 16px; flex: none; }
+textarea { width: 100%; min-height: 220px; font: inherit; font-size: .9rem; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; resize: vertical; }
+.hint { font-size: .8rem; color: var(--muted); }
+.toast { position: fixed; left: 50%; bottom: 20px; transform: translate(-50%, 140%); visibility: hidden; background: var(--ink); color: var(--panel); padding: 8px 16px; border-radius: 999px; font-size: .88rem; font-weight: 600; transition: transform .25s; z-index: 10; }
+.toast.show { transform: translate(-50%, 0); visibility: visible; }
+@media (max-width: 900px) {
+  .bench { grid-template-columns: minmax(0, 1fr); }
+  .panel { border-left: 0; border-top: 1px solid var(--line); }
+}
+@media (prefers-reduced-motion: reduce) { .toast { transition: none; } }
+</style>
+</head>
+<body>
+
+
+<header class="top">
+  <h1>IronMath <span>Simulator</span></h1>
+  <div class="seg" role="group" aria-label="Device" id="devices">
+    <button data-dev="iphone" aria-pressed="true">iPhone 390×844</button>
+    <button data-dev="android" aria-pressed="false">Android 360×780</button>
+    <button data-dev="tablet" aria-pressed="false">Tablet 768×1024</button>
+  </div>
+  <div class="seg" role="group" aria-label="Tema" id="skins">
+    <button data-skinbtn="classic" aria-pressed="true">Classic</button>
+    <button data-skinbtn="forge" aria-pressed="false">Forge</button>
+    <button data-skinbtn="lab" aria-pressed="false">Lab</button>
+    <button data-skinbtn="steel" aria-pressed="false">Steel</button>
+  </div>
+  <span class="sp"></span>
+  <button class="btn" id="reload">Ricarica app</button>
+  <a class="btn" href="index.html" target="_blank" rel="noopener">Apri a schermo intero</a>
+</header>
+
+<div class="bench">
+  <section class="stage" aria-label="App">
+    <div class="holder" id="holder"><div class="device" id="device"><span class="notch"></span><div class="screen"><div class="sbar" aria-hidden="true"><span>9:41</span><i></i></div><iframe id="app" src="index.html" title="IronMath app"></iframe></div></div></div>
+    <div class="caption" id="cap">IronMath 2.2 · iPhone 390×844</div>
+  </section>
+
+  <aside class="panel">
+    <div class="tabs" role="tablist">
+      <button class="tab" role="tab" aria-selected="true" data-pane="journey">Journey</button>
+      <button class="tab" role="tab" aria-selected="false" data-pane="scen">Scenari</button>
+      <button class="tab" role="tab" aria-selected="false" data-pane="ux">Checklist UX</button>
+      <button class="tab" role="tab" aria-selected="false" data-pane="notes">Note</button>
+    </div>
+    <div class="pane" id="pane"></div>
+  </aside>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function () {
+  "use strict";
+  const $ = s => document.querySelector(s);
+  const APPKEY = "maths-trail-v1";
+  const DEV = { iphone: [390, 844, "", 47], android: [360, 780, "android", 30], tablet: [768, 1024, "tablet", 24] };
+  let dev = "iphone", pane = "journey", activeStage = null;
+
+  /* ---------- device frame, scaled to fit ---------- */
+  function layout() {
+    const [w, h, cls, sb] = DEV[dev], d = $("#device"), f = $("#app");
+    d.className = "device " + cls; f.width = w; f.height = h - sb; f.style.width = w + "px"; f.style.height = (h - sb) + "px";
+    const pad = cls === "tablet" ? 36 : 28, fw = w + pad, fh = h + pad;
+    const narrow = window.innerWidth <= 900;
+    const availW = Math.max(240, (narrow ? window.innerWidth : window.innerWidth - Math.min(440, Math.max(320, window.innerWidth * 0.36))) - 40);
+    const availH = Math.max(420, window.innerHeight - 120);
+    const s = Math.min(1, availW / fw, narrow ? 1 : availH / fh);
+    d.style.transform = `scale(${s})`;
+    $("#holder").style.width = fw * s + "px"; $("#holder").style.height = fh * s + "px";
+    $("#cap").textContent = `IronMath 2.2 · ${$(`[data-dev="${dev}"]`).textContent} · scala ${Math.round(s * 100)}%`;
+  }
+  window.addEventListener("resize", layout);
+
+  /* ---------- driving the app ---------- */
+  const appWin = () => $("#app").contentWindow;
+  const appDoc = () => { try { return $("#app").contentDocument; } catch (e) { return null; } };
+  function toast(t) { const el = $("#toast"); el.textContent = t; el.classList.add("show"); clearTimeout(toast.t); toast.t = setTimeout(() => el.classList.remove("show"), 2200); }
+  function whenReady(fn, tries) {
+    const d = appDoc();
+    if (d && d.readyState === "complete" && d.querySelector("#view")) return setTimeout(fn, 120);
+    if ((tries || 0) > 60) return toast("L'app non risponde: prova Ricarica app");
+    setTimeout(() => whenReady(fn, (tries || 0) + 1), 100);
+  }
+  function reloadApp(then) {
+    const f = $("#app"); const onload = () => { f.removeEventListener("load", onload); whenReady(then || (() => { })); };
+    f.addEventListener("load", onload); try { appWin().location.reload(); } catch (e) { f.src = "index.html"; }
+  }
+  function click(sel) { const d = appDoc(); const el = d && d.querySelector(sel); if (el) { el.click(); return true; } toast("Elemento non trovato nell'app"); return false; }
+  function setState(obj) { try { if (obj) localStorage.setItem(APPKEY, JSON.stringify(obj)); else localStorage.removeItem(APPKEY); } catch (e) { toast("Memoria del browser non disponibile"); } }
+
+  const dkey = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  function demoState(kind) {
+    const days = {}, d = new Date();
+    const pattern = kind === "pretest" ? [40, 35, 0, 50, 45, 30, 60, 40, 35, 55, 45, 0, 40, 50] : [0, 0, 0, 0, 0, 0, 0, 30, 45, 0, 40, 35, 50, 20];
+    for (let i = 13; i >= 0; i--) { const x = new Date(d); x.setDate(d.getDate() - i); const v = pattern[13 - i]; if (v) days[dkey(x)] = v; }
+    const q = {}, now = Date.now(); const ok = id => (q[id] = { status: "correct", tries: 1, seen: false, at: now });
+    const bad = id => (q[id] = { status: "wrong", tries: 2, seen: true, at: now });
+    const lessons = {};
+    ["A1", "A2", "A3", "A4", "A5", "A6", "A7", "A8", "A9", "A10", "A11", "A12", "A14", "A16", "B1", "B2", "B3", "B4", "B5", "B6", "B7", "B8"].forEach(ok);
+    ["A13", "A15", "B9"].forEach(bad);
+    lessons["A-0"] = { done: true, stars: 3, at: now }; lessons["A-1"] = { done: true, stars: 2, at: now }; lessons["B-0"] = { done: true, stars: 3, at: now };
+    if (kind === "pretest") {
+      ["A17", "A18", "A19", "A20", "A21", "A23", "B10", "B12", "B13", "B14", "B15", "B16", "B17", "C1", "C2", "C3", "C4", "C5", "C6", "C7", "C8", "C9", "C10", "C11", "C13", "C14", "C15", "C16", "C17", "D1", "D2", "D3", "D4", "D5", "D6", "D7", "D8", "D9", "D10", "D11", "D12"].forEach(ok);
+      ["B11", "C12", "C18", "D13", "D15"].forEach(bad);
+      Object.assign(lessons, { "A-2": { done: true, stars: 2, at: now }, "B-1": { done: true, stars: 2, at: now }, "C-0": { done: true, stars: 3, at: now }, "C-1": { done: true, stars: 2, at: now }, "D-0": { done: true, stars: 3, at: now }, "D-1": { done: true, stars: 1, at: now } });
+    }
+    const xp = Object.values(days).reduce((a, b) => a + b, 0);
+    const log = [
+      { qid: "B9", sec: "B", at: now - 3600e3, res: "wrong", ans: ["2 × 36"] }, { qid: "A15", sec: "A", at: now - 5000e3, res: "wrong", ans: ["0.005"] },
+      { qid: "A13", sec: "A", at: now - 7000e3, res: "wrong", ans: ["26"] }, { qid: "B8", sec: "B", at: now - 8000e3, res: "ok", ans: ["1, 8, 27, 64"] }, { qid: "B7", sec: "B", at: now - 8200e3, res: "ok", ans: ["10000"] }
+    ];
+    return { v: 2, xp: xp, days: days, q: q, lessons: lessons, badges: { first: now, perfect: now, xp100: now, ...(kind === "pretest" ? { streak3: now, xp500: now } : {}) }, sound: false, log: log, prac: { A: { n: 10, ok: 8 }, B: { n: 0, ok: 0 }, C: { n: 0, ok: 0 }, D: { n: 0, ok: 0 } }, fixed: 2, pracDone: 1, best: kind === "pretest" ? 9 : 5, lessonsDone: kind === "pretest" ? 9 : 3, iosHintOff: true };
+  }
+
+  /* ---------- content ---------- */
+  const STAGES = [
+    { n: 1, name: "Installazione", status: ["todo", "Da fare"], goal: "Dal link all'icona sulla Home in meno di 2 minuti.", now: "Banner \"Install\" su Android; istruzioni per iPhone in Settings.", risk: "App non ancora pubblicata. Su iPhone il passo è manuale.", show: () => reloadApp(() => click('[data-go="settings"]')), label: "Mostra le istruzioni" },
+    { n: 2, name: "Primo avvio", status: ["gap", "Lacuna"], goal: "Capire cosa fare e arrivare al primo \"Correct!\" entro 60 secondi.", now: "Si apre sul percorso con la bolla START.", risk: "Nessuna introduzione: XP, serie di giorni e Practice non spiegati.", show: () => { setState(null); reloadApp(() => toast("Stato azzerato: questo è il primo avvio")); }, label: "Simula il primo avvio" },
+    { n: 3, name: "Lezione", status: ["part", "Parziale"], goal: "Imparare dagli errori, non solo contare le giuste.", now: "Una domanda alla volta, errori riproposti, procedimento dopo la risposta.", risk: "Nessun aiuto prima di rispondere: se si blocca tira a indovinare.", show: () => reloadApp(() => click('[data-lesson="A-0"]')), label: "Apri una lezione" },
+    { n: 4, name: "Abitudine", status: ["part", "Parziale"], goal: "10 minuti al giorno per tre settimane.", now: "Obiettivo 30 XP, serie di giorni, badge.", risk: "Obiettivo fisso, nessun promemoria.", show: () => { setState(demoState("week")); reloadApp(() => toast("Dati demo: dopo una settimana")); }, label: "Mostra dopo 1 settimana" },
+    { n: 5, name: "Ripasso pre-test", status: ["gap", "Lacuna"], goal: "Arrivare al test avendo provato le sue condizioni.", now: "\"Fix your mistakes\" e Practice infinita.", risk: "Manca una prova a tempo senza calcolatrice in stile test.", show: () => { setState(demoState("pretest")); reloadApp(() => click('[data-act="review"]')); }, label: "Mostra il ripasso errori" },
+    { n: 6, name: "Genitore", status: ["ok", "Accettato"], goal: "Sapere come va senza controllarla.", now: "Scheda Progress sul telefono di lei.", risk: "Nessuna vista a distanza (rimandata).", show: () => { setState(demoState("pretest")); reloadApp(() => click('[data-go="progress"]')); }, label: "Mostra Progress" }
+  ];
+  const SCEN = [
+    { name: "Primo avvio", text: "Nessun progresso salvato: come la vede la prima volta.", run: () => { setState(null); reloadApp(); } },
+    { name: "Dopo una settimana", text: "6 giorni attivi, 3 lezioni fatte, 3 errori da sistemare (dati demo).", run: () => { setState(demoState("week")); reloadApp(); } },
+    { name: "Prima del test", text: "Quasi tutto fatto, 8 errori aperti, serie di 9 giorni (dati demo).", run: () => { setState(demoState("pretest")); reloadApp(); } },
+    { name: "Practice infinita", text: "Una sessione di esercizi generati: Pythagoras.", run: () => reloadApp(() => click('[data-lesson="D-P"]')) },
+    { name: "Later in Year 8", text: "Gli argomenti dopo il test, in fondo al percorso.", run: () => reloadApp(() => { const d = appDoc(); const u = d && d.getElementById("unit-later"); if (u) u.scrollIntoView({ block: "start" }); }) }
+  ];
+  const CHECK = [
+    "Leggibile a 360 px senza scorrimento laterale",
+    "La tastiera non copre il campo né il pulsante Check (solo su telefono vero)",
+    "Contrasto sufficiente in tema chiaro e scuro",
+    "Ogni pulsante fa esattamente quello che dice",
+    "Nessun vicolo cieco: da ogni schermata si torna indietro",
+    "Risposte equivalenti accettate (1/2 e 0.5, 4y + 7x)",
+    "Animazioni ferme con riduzione del movimento",
+    "Provata offline",
+    "Provata su iPhone e Android veri"
+  ];
+
+  /* ---------- panes ---------- */
+  const store = (k, v) => { try { if (v === undefined) return JSON.parse(localStorage.getItem(k) || "null"); localStorage.setItem(k, JSON.stringify(v)); } catch (e) { return null; } };
+  function render() {
+    document.querySelectorAll(".tab").forEach(t => t.setAttribute("aria-selected", String(t.dataset.pane === pane)));
+    const el = $("#pane");
+    if (pane === "journey") {
+      el.innerHTML = `<p class="lead">Le sei fasi dell'esperienza. Premi il pulsante di una fase per vederla nel telefono. Due fasi hanno lacune vere: il primo avvio e il ripasso prima del test.</p>` +
+        STAGES.map((s, i) => `<article class="st ${activeStage === i ? "active" : ""}"><div class="st-h"><span class="n">${s.n}</span><b>${s.name}</b><span class="pill ${s.status[0]}">${s.status[1]}</span></div>
+        <dl><dt>Obiettivo</dt><dd>${s.goal}</dd><dt>Oggi</dt><dd>${s.now}</dd><dt>Rischio</dt><dd class="risk">${s.risk}</dd></dl>
+        <div class="act"><button class="btn primary" data-stage="${i}">${s.label}</button></div></article>`).join("");
+    } else if (pane === "scen") {
+      el.innerHTML = `<p class="lead">Scenari pronti per giudicare l'app in momenti diversi. Alcuni scenari caricano dati demo nell'app del simulatore: i tuoi progressi veri sul telefono non vengono toccati.</p>` +
+        SCEN.map((s, i) => `<div class="sc"><div class="st-h"><b>${s.name}</b></div><p>${s.text}</p><div><button class="btn primary" data-scen="${i}">Carica</button></div></div>`).join("");
+    } else if (pane === "ux") {
+      const done = store("mt-sim-check") || {};
+      el.innerHTML = `<p class="lead">La checklist da spuntare prima di ogni versione. Le spunte restano salvate in questo browser.</p><div class="chk">` +
+        CHECK.map((c, i) => `<label><input type="checkbox" id="chk-${i}" data-chk="${i}" ${done[i] ? "checked" : ""}><span>${c}</span></label>`).join("") +
+        `</div><p class="hint">Il simulatore non mostra la tastiera del telefono né il tema scuro dell'app: quelle due voci si verificano sul telefono.</p>`;
+    } else {
+      el.innerHTML = `<p class="lead">Annota cosa noti mentre provi l'app o mentre guardi tua figlia usarla. A fine giro copia le note nel documento di processo, nella sezione Registro decisioni.</p>
+        <textarea id="notes" placeholder="Momento · cosa è successo · gravità (blocca / rallenta / dettaglio)">${(store("mt-sim-notes") || "").replace(/</g, "&lt;")}</textarea>
+        <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" id="copyNotes">Copia le note</button><span class="hint" id="saved">Salvate in questo browser</span></div>`;
+    }
+  }
+  document.addEventListener("click", async e => {
+    const t = e.target.closest("button"); if (!t) return;
+    if (t.dataset.dev) { dev = t.dataset.dev; document.querySelectorAll("#devices button").forEach(b => b.setAttribute("aria-pressed", String(b === t))); layout(); return; }
+    if (t.dataset.pane) { pane = t.dataset.pane; render(); return; }
+    if (t.dataset.skinbtn) { const id = t.dataset.skinbtn; document.querySelectorAll("#skins button").forEach(b => b.setAttribute("aria-pressed", String(b === t)));
+      try { appWin().__mt.setSkin(id); toast("Tema: " + t.textContent); } catch (err) { toast("L'app non risponde: prova Ricarica app"); } return; }
+    if (t.dataset.stage) { activeStage = +t.dataset.stage; STAGES[activeStage].show(); render(); return; }
+    if (t.dataset.scen) { SCEN[+t.dataset.scen].run(); toast("Scenario caricato: " + SCEN[+t.dataset.scen].name); return; }
+    if (t.id === "reload") { reloadApp(); return; }
+    if (t.id === "copyNotes") {
+      const v = $("#notes").value;
+      try { await navigator.clipboard.writeText(v); toast("Note copiate"); } catch (err) { $("#notes").select(); toast("Seleziona e copia con Ctrl+C"); }
+    }
+  });
+  document.addEventListener("change", e => { if (e.target.dataset.chk !== undefined) { const d = store("mt-sim-check") || {}; d[e.target.dataset.chk] = e.target.checked; store("mt-sim-check", d); } });
+  let nt; document.addEventListener("input", e => { if (e.target.id === "notes") { clearTimeout(nt); nt = setTimeout(() => store("mt-sim-notes", e.target.value), 400); } });
+
+  layout(); render();
+})();
+</script>
+
+</body>
+</html>
