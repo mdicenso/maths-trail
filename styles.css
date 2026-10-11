@@ -27,7 +27,7 @@
   --bad-soft: #ffe3e6;
   --warn: #e69100;
   --warn-soft: #fff1d6;
-  --A: #ff8a1f; --B: #8b5cf6; --C: #10b3a3; --D: #f43f73; --E: #3b82f6;
+  --A: #ff8a1f; --B: #8b5cf6; --C: #10b3a3; --D: #f43f73; --E: #3b82f6; --F: #84a912;
   --radius: 18px;
   --font: "Nunito", ui-rounded, "SF Pro Rounded", system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-display: var(--font);
@@ -386,7 +386,7 @@ textarea { width: 100%; font: inherit; font-size: 0.8rem; border: 2px solid var(
 /* armour assembly card (Progress tab, HUD only) */
 .armour-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 12px; }
 .armour-head b { font-family: var(--font-display); letter-spacing: .04em; color: var(--sun); }
-.armour-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
+.armour-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
 .armour-piece { display: grid; justify-items: center; gap: 6px; text-align: center; }
 .ap-icon { width: 100%; aspect-ratio: 1; border-radius: 12px; display: grid; place-items: center; background: #15171b; border: 1px solid var(--line); }
 .ap-icon svg { width: 60%; height: 60%; fill: #4b545e; }

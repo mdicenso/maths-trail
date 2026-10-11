@@ -163,7 +163,7 @@
     return n;
   }
   function checkExpr(input, p) {
-    let raw = input;
+    let raw = String(input).replace(/^s*[a-z]s*=s*/i, "");   // "x = (y-7)/3" is accepted like "(y-7)/3"
     if (p.pi) raw = raw.replace(/cm\^?2|cm²|cm/gi, "");
     let ok;
     try { ok = equiv(raw, p.a); } catch (e) { return { st: "bad", msg: "I couldn't read that. Use letters, numbers, brackets, + and −, and x^2 or x² for squares." }; }

@@ -136,6 +136,93 @@ GENS.E = [
     return G("E", `Work out {${a}/${b}} ${div ? "÷" : "×"} {${c}/${d}}.`, [N(s, { frac: true })], div ? `Keep, change, flip: {${a}/${b}} × {${d}/${c}} = {${num}/${den}}.` : `Multiply tops and bottoms: {${num}/${den}}.`, fracMark(s)); }
 ];
 
+
+/* ---------- Unit 6: expressions and formulae ---------- */
+// poly([[coef, "x^2"], [coef, "x"], [coef, ""]]) -> machine string "x^2-3x+4" (zero terms dropped)
+function poly(ts) { let s = ""; for (const [c, v] of ts) { if (!c) continue; const a = Math.abs(c), body = v ? (a === 1 ? v : a + v) : String(a); s += (c < 0 ? "-" : s ? "+" : "") + body; } return s || "0"; }
+const disp = s => show(s).replace(/\^2/g, "²");     // machine form -> what the learner reads
+const lin = (a, b, v) => poly([[a, v || "x"], [b, ""]]);
+const sgnPick = () => (Math.random() < 0.5 ? 1 : -1);
+function coprime(lo, hi) { let a, b; do { a = rnd(lo, hi); b = rnd(lo, hi); } while (gcd(a, b) !== 1); return [a, b]; }
+// NB: the answer checker lower-cases everything, so a formula must never use both "a" and "A" (etc.)
+GENS.F = [
+  // 0 simplify like terms (Warm-up)
+  () => { const [u, v] = pick([["a", "b"], ["x", "y"], ["m", "n"], ["c", "d"]]); let a, b, c, d, s2, X, Y;
+    do { a = rnd(2, 9); b = rnd(2, 9); c = rnd(2, 8); d = rnd(2, 8); s2 = sgnPick(); X = a - c; Y = b + s2 * d; } while (!X || !Y);
+    const exp = poly([[X, u], [Y, v]]);
+    return G("F", `Simplify ${a}${u} + ${b}${v} − ${c}${u} ${s2 > 0 ? "+" : "−"} ${d}${v}.`, [E(exp, { simp: true })], `${u} terms: ${a}${u} − ${c}${u} = ${coef(X, u)}. ${v} terms: ${b}${v} ${s2 > 0 ? "+" : "−"} ${d}${v} = ${coef(Y, v)}.`, disp(exp)); },
+  // 1 substitute into a linear expression, x may be negative (Warm-up)
+  () => { const a = rnd(2, 9), b = rnd(1, 12), s = sgnPick(), x = rnd(-6, 6) || 2, r = a * x + s * b, xs = x < 0 ? "−" + -x : String(x);
+    return G("F", `Work out ${a}x ${s > 0 ? "+" : "−"} ${b} when x = ${xs}.`, [N(String(r))], `${a} × ${neg(x)} = ${a * x}. Then ${a * x} ${s > 0 ? "+" : "−"} ${b} = ${r}.`, String(r).replace("-", "−")); },
+  // 2 expand a single bracket (Warm-up)
+  () => { const k = rnd(2, 9), a = rnd(1, 6), b = rnd(1, 9) * sgnPick(), exp = lin(k * a, k * b);
+    return G("F", `Expand ${k}(${disp(lin(a, b))}).`, [E(exp, { simp: true })], `Multiply every term in the bracket by ${k}: ${k} × ${disp(coef(a, "x"))} = ${disp(coef(k * a, "x"))} and ${k} × ${neg(b)} = ${k * b}.`, disp(exp)); },
+  // 3 expand and simplify two single brackets, with double signs (Core)
+  () => { let p, q, a, b, c, d, s, X, K;
+    do { p = rnd(2, 6); q = rnd(2, 6); a = rnd(1, 4); c = rnd(1, 4); b = rnd(1, 7) * sgnPick(); d = rnd(1, 7) * sgnPick(); s = Math.random() < 0.6 ? -1 : 1; X = p * a + s * q * c; K = p * b + s * q * d; } while (!X || !K);
+    const exp = lin(X, K);
+    return G("F", `Expand and simplify ${p}(${disp(lin(a, b))}) ${s > 0 ? "+" : "−"} ${q}(${disp(lin(c, d))}).`, [E(exp, { simp: true })],
+      `First bracket: ${disp(lin(p * a, p * b))}. Second bracket: ${s > 0 ? "" : "the minus sign changes the sign of every term, giving "}${disp(lin(s * q * c, s * q * d))}. Collect like terms: ${disp(exp)}.`, disp(exp)); },
+  // 4 substitute into an expression with a power and a negative number (Core)
+  () => { const x = rnd(-5, -2), a = rnd(2, 6), b = rnd(2, 7), t = rnd(0, 3); let q, r, sol;
+    if (t === 0) { q = `x² + ${a}x`; r = x * x + a * x; sol = `x² = ${neg(x)}² = ${x * x} (a negative squared is positive). ${a}x = ${a * x}. Add: ${x * x} + ${neg(a * x)} = ${r}.`; }
+    else if (t === 1) { q = `${a}x² − ${b}x`; r = a * x * x - b * x; sol = `Square first: x² = ${x * x}, so ${a}x² = ${a * x * x}. Then −${b}x = −${b} × ${neg(x)} = +${-b * x}. Total: ${r}.`; }
+    else if (t === 2) { q = `${a * a} − x²`; r = a * a - x * x; sol = `x² = ${x * x} (not ${-x * x}), so ${a * a} − ${x * x} = ${r}.`; }
+    else { q = `(${a}x)²`; r = a * a * x * x; sol = `${a}x = ${a * x}. Squaring: ${neg(a * x)}² = ${r}.`; }
+    return G("F", `x = −${-x}. Work out ${q}.`, [N(String(r))], sol, String(r).replace("-", "−")); },
+  // 5 factorise a linear expression fully (Core)
+  () => { const k = rnd(2, 9), [a, b0] = coprime(1, 7), b = b0 * (Math.random() < 0.4 ? -1 : 1);
+    return G("F", `Factorise fully ${disp(lin(k * a, k * b))}.`, [E(`${k}(${lin(a, b)})`, { factor: String(k) })], `The HCF of ${k * a} and ${Math.abs(k * b)} is ${k}. Divide each term by ${k}: ${disp(lin(a, b))}.`, `${k}(${disp(lin(a, b))})`); },
+  // 6 use a formula: substitute, or find an input from the output (Core)
+  () => { const m = rnd(0, 2);
+    if (m === 0) { const u = rnd(2, 12), a = rnd(2, 9), t = rnd(2, 8), v = u + a * t;
+      return G("F", `Use v = u + at to find v when u = ${u}, a = ${a} and t = ${t}.`, [N(String(v), { pre: "v =" })], `at = ${a} × ${t} = ${a * t}. v = ${u} + ${a * t} = ${v}.`, String(v)); }
+    if (m === 1) { const u = rnd(1, 8), a = 2 * rnd(1, 5), t = rnd(2, 5), s = u * t + a / 2 * t * t;
+      return G("F", `Use s = ut + ½at² to find s when u = ${u}, a = ${a} and t = ${t}.`, [N(String(s), { pre: "s =" })], `t² = ${t * t}. ½ × ${a} × ${t * t} = ${a / 2 * t * t}. ut = ${u * t}. s = ${u * t} + ${a / 2 * t * t} = ${s}.`, String(s)); }
+    const mm = rnd(2, 9), c = rnd(3, 20), n = rnd(2, 12), C = mm * n + c;
+    return G("F", `A taxi charges C = ${mm}n + ${c} pounds for a journey of n miles. Find n when C = ${C}.`, [N(String(n), { pre: "n =" })], `${C} = ${mm}n + ${c}. Subtract ${c}: ${C - c} = ${mm}n. Divide by ${mm}: n = ${n}.`, `n = ${n}`); },
+  // 7 change the subject of a simple formula (Core)
+  () => { const t = rnd(0, 2);
+    if (t === 0) { const m = rnd(2, 9), c = rnd(1, 15);
+      return G("F", `Make x the subject of y = ${m}x + ${c}.`, [E(`(y-${c})/${m}`, { pre: "x =" })], `Subtract ${c} from both sides: y − ${c} = ${m}x. Divide both sides by ${m}.`, `x = (y − ${c})/${m}`); }
+    if (t === 1) return G("F", "Make l the subject of P = 2l + 2w.", [E("(P-2w)/2", { pre: "l =" })], "Subtract 2w from both sides: P − 2w = 2l. Divide both sides by 2.", "l = (P − 2w)/2");
+    return Math.random() < 0.5 ? G("F", "Make a the subject of v = u + at.", [E("(v-u)/t", { pre: "a =" })], "Subtract u from both sides: v − u = at. Divide both sides by t.", "a = (v − u)/t")
+      : G("F", "Make t the subject of v = u + at.", [E("(v-u)/a", { pre: "t =" })], "Subtract u from both sides: v − u = at. Divide both sides by a.", "t = (v − u)/a"); },
+  // 8 write an expression from a context (Core)
+  () => { const t = rnd(0, 2);
+    if (t === 0) { const a = rnd(1, 4), b = rnd(1, 6), c = rnd(2, 8), exp = lin(2 * a, 2 * b + 2 * c);
+      return G("F", `A rectangle has length (${disp(lin(a, b))}) cm and width ${c} cm. Write a simplified expression for its perimeter, in cm.`, [E(exp, { simp: true })], `Perimeter = 2 × (length + width) = 2(${disp(lin(a, b + c))}) = ${disp(exp)}.`, disp(exp)); }
+    if (t === 1) { const n = pick([3, 5, 6, 8]), k = rnd(1, 9), names = { 3: "equilateral triangle", 5: "regular pentagon", 6: "regular hexagon", 8: "regular octagon" }, exp = lin(n, n * k);
+      return G("F", `Each side of a ${names[n]} is (x + ${k}) cm. Write a simplified expression for its perimeter, in cm.`, [E(exp, { simp: true })], `${n} sides: ${n}(x + ${k}) = ${disp(exp)}.`, disp(exp)); }
+    const k = rnd(2, 9), b = rnd(1, 9), exp = lin(k, k * b);
+    return G("F", `A rectangle has length (x + ${b}) cm and width ${k} cm. Write an expression for its area and expand it, in cm².`, [E(exp, { simp: true })], `Area = length × width = ${k}(x + ${b}) = ${disp(exp)}.`, disp(exp)); },
+  // 9 expand double brackets (Challenge)
+  () => { const p = Math.random() < 0.3 ? rnd(2, 3) : 1, a = rnd(1, 8) * sgnPick(), b = rnd(1, 8) * sgnPick(), X = p * b + a, C = a * b;
+    const lhs = `(${disp(lin(p, a))})(${disp(lin(1, b))})`, exp = poly([[p, "x^2"], [X, "x"], [C, ""]]);
+    return G("F", `Expand and simplify ${lhs}.`, [E(exp, { simp: true })], `Multiply each term in the first bracket by each term in the second: ${p === 1 ? "" : p}x² ${b < 0 ? "−" : "+"} ${Math.abs(b) * p === 1 ? "" : Math.abs(b) * p}x ${a < 0 ? "−" : "+"} ${Math.abs(a)}x ${C < 0 ? "−" : "+"} ${Math.abs(C)}. Collect the x terms: ${disp(exp)}.`, disp(exp)); },
+  // 10 factorise a higher-degree expression (Challenge)
+  () => { const k = rnd(1, 6), [a, b0] = coprime(1, 6), b = b0 * (Math.random() < 0.4 ? -1 : 1), t = rnd(0, 1);
+    if (t === 0) { const cf = k === 1 ? "x" : k + "x";
+      return G("F", `Factorise fully ${disp(poly([[k * a, "x^2"], [k * b, "x"]]))}.`, [E(`${cf}(${lin(a, b)})`, { factor: cf })], `The common factor is ${cf}. Divide each term by ${cf}: ${disp(lin(a, b))}.`, `${cf}(${disp(lin(a, b))})`); }
+    const cf = k === 1 ? "xy" : k + "xy", bb = Math.abs(b);
+    return G("F", `Factorise fully ${k * a === 1 ? "" : k * a}x²y ${b < 0 ? "−" : "+"} ${k * bb === 1 ? "" : k * bb}xy².`, [E(`${cf}(${coef(a, "x")}${b < 0 ? "-" : "+"}${coef(bb, "y")})`, { factor: cf })], `The common factor is ${cf}. Divide each term by ${cf}.`, `${cf}(${coef(a, "x")} ${b < 0 ? "−" : "+"} ${coef(bb, "y")})`); },
+  // 11 change the subject, harder (Challenge)
+  () => { const t = rnd(0, 4);
+    if (t === 0) return G("F", "Make a the subject of v² = u² + 2as.", [E("(v^2-u^2)/(2s)", { pre: "a =" })], "Subtract u² from both sides: v² − u² = 2as. Divide both sides by 2s.", "a = (v² − u²)/(2s)");
+    if (t === 1) return G("F", "Make h the subject of T = ½(a + b)h.", [E("2t/(a+b)", { pre: "h =" })], "Multiply both sides by 2: 2T = (a + b)h. Divide both sides by (a + b).", "h = 2T/(a + b)");
+    if (t === 2) return G("F", "Make m the subject of E = ½mv².", [E("2e/v^2", { pre: "m =" })], "Multiply both sides by 2: 2E = mv². Divide both sides by v².", "m = 2E/v²");
+    if (t === 3) { const k = rnd(2, 9); return G("F", `Make x the subject of y = ${k}(x − c).`, [E(`y/${k}+c`, { pre: "x =" })], `Divide both sides by ${k}: y/${k} = x − c. Add c to both sides.`, `x = y/${k} + c`); }
+    return G("F", "Make l the subject of P = 2(l + w).", [E("p/2-w", { pre: "l =" })], "Divide both sides by 2: P/2 = l + w. Subtract w from both sides.", "l = P/2 − w"); },
+  // 12 substitute two letters, with negatives and powers (Challenge)
+  () => { const x = rnd(-4, -1), y = rnd(2, 5), t = rnd(0, 2), xs = `−${-x}`; let q, r, sol;
+    if (t === 0) { q = "x²y − xy"; r = x * x * y - x * y; sol = `x²y = ${x * x} × ${y} = ${x * x * y}. xy = ${neg(x)} × ${y} = ${x * y}. So ${x * x * y} − ${neg(x * y)} = ${r}.`; }
+    else if (t === 1) { q = "2x² − 3xy + y²"; r = 2 * x * x - 3 * x * y + y * y; sol = `2x² = ${2 * x * x}. 3xy = 3 × ${neg(x)} × ${y} = ${3 * x * y}, so −3xy = +${-3 * x * y}. y² = ${y * y}. Total ${r}.`; }
+    else { q = "(x − y)²"; r = (x - y) * (x - y); sol = `x − y = ${neg(x)} − ${y} = ${x - y}. Squared: ${neg(x - y)}² = ${r}.`; }
+    return G("F", `x = ${xs} and y = ${y}. Work out ${q}.`, [N(String(r))], sol, String(r)); }
+];
+// show a real minus sign (−) in the worked solutions and answers, never the keyboard hyphen
+GENS.F = GENS.F.map(g => () => { const q = g(); q.sol = q.sol.replace(/-(?=d)/g, "−"); q.ans = String(q.ans).replace(/-(?=d)/g, "−"); return q; });
+
 // Which Warm-up(0)/Core(1)/Challenge(2) tier each GENS[sec] generator best matches (by index,
 // same order as the array above). Used by makeLevelPool() in gen.js to build the random pool
 // for Warm-up/Core/Challenge lessons, alongside the curated fixed questions for that level.
@@ -144,5 +231,6 @@ const GENS_TIER = {
   B: [0, 0, 2, 1, 2, 1, 0],
   C: [0, 1, 2, 0, 1, 1, 2],
   D: [0, 1, 0, 1, 2, 1, 2],
-  E: [0, 0, 2, 1, 1, 1, 2, 1, 2]
+  E: [0, 0, 2, 1, 1, 1, 2, 1, 2],
+  F: [0, 0, 0, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2]
 };

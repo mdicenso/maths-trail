@@ -1,7 +1,7 @@
 /* IronMath - app: lesson path, one-question lesson flow, XP, streaks, badges, progress report, settings. */
 "use strict";
 (function () {
-  const VERSION = "2.7.0";
+  const VERSION = "2.8.0";
   const $ = s => document.querySelector(s);
   const view = $("#view"), tabbar = $("#tabbar");
 
@@ -25,7 +25,8 @@
     boots: "M7 2h5v7.3c0 .8.3 1.5.9 2.1l4.3 4.3c.9.9.4 2.3-.8 2.3H5a2 2 0 0 1-2-2v-2.4c0-.9.5-1.7 1.3-2.1L7 10.1V2Z",
     chest: "M12 2 20 5v6c0 5-3.4 8.7-8 9-4.6-.3-8-4-8-9V5l8-3Zm0 3.2L7 7v4c0 3.4 2.1 6 5 6.4V5.2Z",
     helmet: "M12 2c5 0 8.5 3.8 8.5 9v4a2 2 0 0 1-2 2h-1.2a1 1 0 0 1-.9-.6L15 13h-1v4a1 1 0 0 1-1 1h-2a1 1 0 0 1-1-1v-4h-1l-1.4 3.4a1 1 0 0 1-.9.6H5.5a2 2 0 0 1-2-2v-4C3.5 5.8 7 2 12 2Zm-3.5 8h7v-1.5h-7V10Z",
-    thruster: "M9 2h6l1 7-1 3H9l-1-3 1-7Zm-1 12h8l1.6 5.5a1 1 0 0 1-1 1.3L12 19l-4.6 1.8a1 1 0 0 1-1-1.3L8 14Z"
+    thruster: "M9 2h6l1 7-1 3H9l-1-3 1-7Zm-1 12h8l1.6 5.5a1 1 0 0 1-1 1.3L12 19l-4.6 1.8a1 1 0 0 1-1-1.3L8 14Z",
+    repulsor: "M12 2a10 10 0 1 0 0 20 10 10 0 1 0 0-20ZM12 6a6 6 0 1 1 0 12 6 6 0 1 1 0-12ZM12 9a3 3 0 1 0 0 6 3 3 0 1 0 0-6Z"
   };
   const ic = (n, cls) => `<svg viewBox="0 0 24 24" aria-hidden="true"${cls ? ` class="${cls}"` : ""}><path d="${ICON[n]}"/></svg>`;
 
@@ -48,13 +49,14 @@
   }
   const GOAL = 30;
   const level = () => Math.floor(S.xp / 100) + 1;
-  const COLORS = { A: "var(--A)", B: "var(--B)", C: "var(--C)", D: "var(--D)", E: "var(--E)", LA: "var(--muted)", LB: "var(--muted)", LC: "var(--muted)", LD: "var(--muted)" };
+  const COLORS = { A: "var(--A)", B: "var(--B)", C: "var(--C)", D: "var(--D)", E: "var(--E)", F: "var(--F)", LA: "var(--muted)", LB: "var(--muted)", LC: "var(--muted)", LD: "var(--muted)" };
   const ARMOUR = [
     { sec: "A", key: "gloves", name: "Gauntlets" },
     { sec: "B", key: "boots", name: "Boots" },
     { sec: "C", key: "chest", name: "Chestplate" },
     { sec: "D", key: "helmet", name: "Helmet" },
-    { sec: "E", key: "thruster", name: "Thrusters" }
+    { sec: "E", key: "thruster", name: "Thrusters" },
+    { sec: "F", key: "repulsor", name: "Repulsors" }
   ];
   const isHud = () => S.skin === "hud";
   const xpWord = () => isHud() ? "Energy" : "XP";
@@ -133,7 +135,8 @@
     { id: "secB", name: "Powers master", desc: "All of Powers & Primes", icon: "trophy", c: "var(--B)", test: () => mastered("B") === secSize("B") },
     { id: "secC", name: "Area master", desc: "All of Area & Volume", icon: "trophy", c: "var(--C)", test: () => mastered("C") === secSize("C") },
     { id: "secD", name: "Pythagoras master", desc: "All of Pythagoras", icon: "trophy", c: "var(--D)", test: () => mastered("D") === secSize("D") },
-    { id: "secE", name: "Fractions master", desc: "All of Fractions & %", icon: "trophy", c: "var(--E)", test: () => mastered("E") === secSize("E") }
+    { id: "secE", name: "Fractions master", desc: "All of Fractions & %", icon: "trophy", c: "var(--E)", test: () => mastered("E") === secSize("E") },
+    { id: "secF", name: "Algebra master", desc: "All of Expressions", icon: "trophy", c: "var(--F)", test: () => mastered("F") === secSize("F") }
   ];
   function checkBadges() {
     const fresh = [];
@@ -558,7 +561,7 @@
     const pieces = ARMOUR.map(a => Object.assign({ on: mastered(a.sec) === secSize(a.sec) }, a));
     const n = pieces.filter(p => p.on).length;
     return `<div class="sec-title">Armour</div><div class="card armour">
-      <div class="armour-head"><b>${n ? `Armour Mk ${n}` : "Armour — offline"}</b><span class="muted">${n}/5 pieces</span></div>
+      <div class="armour-head"><b>${n ? `Armour Mk ${n}` : "Armour — offline"}</b><span class="muted">${n}/${ARMOUR.length} pieces</span></div>
       <div class="armour-grid">${pieces.map(p => `<div class="armour-piece ${p.on ? "on" : ""}"><div class="ap-icon">${ic(p.key)}</div><span>${p.name}</span></div>`).join("")}</div>
       ${n < 5 ? `<p class="muted" style="margin:10px 0 0;font-size:.82rem;font-weight:700">Finish every question in a unit to unlock its piece.</p>` : `<p class="muted" style="margin:10px 0 0;font-size:.82rem;font-weight:700">Full suit online.</p>`}
     </div>`;
@@ -824,7 +827,7 @@
       </div>
       <div class="sec-title">Start again</div>
       <div class="card"><button class="btn bad block" data-act="reset">${resetArmed ? "Tap again to delete all progress" : "Reset all progress"}</button></div>
-      <p class="muted" style="text-align:center;font-size:.8rem;font-weight:700;margin-top:18px">IronMath ${VERSION} · Year 8 · 100 questions + endless practice</p>`;
+      <p class="muted" style="text-align:center;font-size:.8rem;font-weight:700;margin-top:18px">IronMath ${VERSION} · Year 8 · ${Q.length} questions + endless practice</p>`;
   }
   const encode = o => btoa(unescape(encodeURIComponent(JSON.stringify(o))));
   const decode = s => JSON.parse(decodeURIComponent(escape(atob(s.trim()))));

@@ -167,3 +167,23 @@ Q.push(...[
   ["E14", 2, "A £250 phone is reduced by 12%. Use a multiplier to find the new price.", [N("220", { pre: "£" })], "A 12% decrease leaves 88%, so the multiplier is 0.88. £250 × 0.88 = £220.", "£220"],
   ["E15", 2, "Explain why a 10% increase followed by a 10% decrease does not take you back to the original amount.", [{ t: "self" }], "Try £100: +10% gives £110, then −10% of £110 is £11, leaving £99. The decrease is 10% of a bigger number. With multipliers: 1.1 × 0.9 = 0.99, so you always end 1% lower.", "You end at 99% of the start"]
 ].map(r => ({ id: r[0], sec: r[0][0], lvl: r[1], q: r[2], parts: r[3], sol: r[4], ans: r[5] })));
+
+/* ---------- Unit 6: Expressions and formulae (Core + advancing/excelling, no calculator) ---------- */
+SECTIONS.push({ id: "F", name: "Expressions", blurb: "Unit 6 · Expressions and formulae. Brackets, factorising, substitution and changing the subject. No calculator." });
+Q.push(...[
+  ["F1", 0, "Simplify 5a + 3b − 2a + 4b.", [E("3a+7b", { simp: true })], "Collect like terms. a terms: 5a − 2a = 3a. b terms: 3b + 4b = 7b.", "3a + 7b"],
+  ["F2", 0, "Work out 4x − 7 when x = −3.", [N("-19")], "Replace x with (−3): 4 × (−3) − 7 = −12 − 7 = −19.", "−19"],
+  ["F3", 0, "Expand 3(2x − 5).", [E("6x-15", { simp: true })], "Multiply every term in the bracket by 3: 3 × 2x = 6x and 3 × (−5) = −15.", "6x − 15"],
+  ["F4", 0, "Factorise 8x + 12.", [E("4(2x+3)", { factor: "4" })], "The HCF of 8 and 12 is 4. Divide each term by 4 and put the 4 outside a bracket: 4(2x + 3).", "4(2x + 3)"],
+  ["F5", 0, "A rectangle has length (x + 4) cm and width 3 cm. Write a simplified expression for its perimeter, in cm.", [E("2x+14", { simp: true })], "Perimeter = 2 × (length + width) = 2(x + 4 + 3) = 2(x + 7) = 2x + 14.", "2x + 14"],
+  ["F6", 1, "Expand and simplify 3(x + 4) − 2(x − 5).", [E("x+22", { simp: true })], "3(x + 4) = 3x + 12. Then −2(x − 5) = −2x + 10 (a minus times a minus makes a plus). Collect: 3x − 2x + 12 + 10 = x + 22.", "x + 22"],
+  ["F7", 1, "x = −2. Work out 3x² − 5x.", [N("22")], "Square first: (−2)² = 4 (a negative squared is positive), so 3x² = 12. Then −5x = −5 × (−2) = +10. Total: 12 + 10 = 22.", "22"],
+  ["F8", 1, "Use the formula v = u + at to find v when u = 6, a = 3 and t = 4.", [N("18")], "at means a × t = 3 × 4 = 12. Then v = 6 + 12 = 18.", "18"],
+  ["F9", 1, "Make x the subject of y = 3x + 7.", [E("(y-7)/3", { pre: "x =" })], "Undo the + 7 first: y − 7 = 3x. Then undo the × 3 by dividing everything by 3: x = (y − 7)/3.", "x = (y − 7)/3"],
+  ["F10", 1, "The cost of hiring a bike is C = 4h + 6, where C is the cost in £ and h is the number of hours. Find h when C = 30.", [N("6", { pre: "h =" })], "Put C = 30 into the formula: 30 = 4h + 6. Subtract 6: 24 = 4h. Divide by 4: h = 6.", "h = 6"],
+  ["F11", 2, "Expand and simplify (x + 3)(x + 5).", [E("x^2+8x+15", { simp: true })], "Multiply each term in the first bracket by each term in the second: x² + 5x + 3x + 15. Collect: x² + 8x + 15.", "x² + 8x + 15"],
+  ["F12", 2, "Expand and simplify (x − 4)(x + 7).", [E("x^2+3x-28", { simp: true })], "x × x = x², x × 7 = 7x, −4 × x = −4x, −4 × 7 = −28. Collect: x² + 7x − 4x − 28 = x² + 3x − 28.", "x² + 3x − 28"],
+  ["F13", 2, "Factorise fully 6x²y + 9xy².", [E("3xy(2x+3y)", { factor: "3xy" })], "The HCF of 6 and 9 is 3. Both terms also contain x and y. So the common factor is 3xy. 6x²y ÷ 3xy = 2x and 9xy² ÷ 3xy = 3y.", "3xy(2x + 3y)"],
+  ["F14", 2, "Make a the subject of v² = u² + 2as.", [E("(v^2-u^2)/(2s)", { pre: "a =" })], "Subtract u² from both sides: v² − u² = 2as. Then divide both sides by 2s: a = (v² − u²)/(2s).", "a = (v² − u²)/(2s)"],
+  ["F15", 2, "Maya says (x + 3)² = x² + 9. Explain why she is wrong.", [{ t: "self" }], "(x + 3)² means (x + 3)(x + 3) = x² + 3x + 3x + 9 = x² + 6x + 9. Maya has missed the 6x. Check with x = 1: (1 + 3)² = 16, but 1² + 9 = 10.", "(x + 3)² = x² + 6x + 9"]
+].map(r => ({ id: r[0], sec: r[0][0], lvl: r[1], q: r[2], parts: r[3], sol: r[4], ans: r[5] })));
