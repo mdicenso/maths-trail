@@ -93,3 +93,22 @@ function makePractice(sec, n, table) {
   for (let i = 0; i < n; i++) out.push(gens[i % gens.length]());
   return out.sort(() => Math.random() - 0.5);
 }
+// Warm-up/Core/Challenge pool: a random mix of this level's curated fixed questions (each used
+// at most once per draw) and fresh generated ones from GENS[sec], restricted via GENS_TIER (in
+// gen_u.js) to the generators judged to match this level's difficulty. Replaying a lesson gives
+// a different mix each time, same spirit as Practice but still anchored to the checked questions.
+function makeLevelPool(sec, lvl, n) {
+  const fixed = Q.filter(q => q.sec === sec && q.lvl === lvl).sort(() => Math.random() - 0.5);
+  const tiers = GENS_TIER[sec] || [];
+  const gens = (GENS[sec] || []).filter((_, i) => tiers[i] === lvl);
+  const out = [];
+  let fi = 0, gi = 0;
+  for (let i = 0; i < n; i++) {
+    const canFixed = fi < fixed.length, canGen = gens.length > 0;
+    if (canFixed && (!canGen || Math.random() < 0.5)) out.push(fixed[fi++]);
+    else if (canGen) out.push(gens[gi++ % gens.length]());
+    else if (canFixed) out.push(fixed[fi++]);
+    else break;
+  }
+  return out.sort(() => Math.random() - 0.5);
+}

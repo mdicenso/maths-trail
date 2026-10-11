@@ -1,7 +1,7 @@
 /* IronMath - app: lesson path, one-question lesson flow, XP, streaks, badges, progress report, settings. */
 "use strict";
 (function () {
-  const VERSION = "2.4.0";
+  const VERSION = "2.7.0";
   const $ = s => document.querySelector(s);
   const view = $("#view"), tabbar = $("#tabbar");
 
@@ -64,7 +64,7 @@
 
   const LESSONS = [];
   SECTIONS.forEach(s => {
-    LEVELS.forEach((L, i) => LESSONS.push({ id: `${s.id}-${i}`, sec: s.id, title: L, qids: Q.filter(q => q.sec === s.id && q.lvl === i).map(q => q.id) }));
+    LEVELS.forEach((L, i) => LESSONS.push({ id: `${s.id}-${i}`, sec: s.id, title: L, lvl: i, qids: Q.filter(q => q.sec === s.id && q.lvl === i).map(q => q.id) }));
     LESSONS.push({ id: `${s.id}-P`, sec: s.id, title: "Practice", practice: true });
   });
   LATER.forEach(l => LESSONS.push({ id: `${l.id}-P`, sec: l.id, title: l.name, practice: true, later: true }));
@@ -156,7 +156,8 @@
 
   /* ---------- routing ---------- */
   let route = "learn", L = null, TP = null, HUD_ACT = null, LAUNCH = null, quitAsk = false, tpTimerId = null;
-  function go(r) { route = r; L = null; render(); window.scrollTo(0, 0); }
+  let openUnit = null, justOpenedUnit = null; // which unit's portal is open on Home, and whether it just opened (plays the reveal)
+  function go(r) { route = r; L = null; openUnit = null; render(); window.scrollTo(0, 0); }
   const SKINS = [
     { id: "classic", name: "Classic", bg: "#f6f5fb", fg: "#6d4aff", meta: "#6D4AFF" },
     { id: "forge", name: "Forge", bg: "#121216", fg: "#e5372a", meta: "#121216" },
@@ -206,18 +207,11 @@
     if (deferredPrompt && !standalone()) h += `<div class="card banner"><p>Install IronMath<small>Open it from your home screen, even offline.</small></p><button class="btn small" data-act="install">Install</button></div>`;
     else if (isIOS() && !standalone() && !S.iosHintOff) h += `<div class="card banner"><p>Add it to your home screen<small>Tap Share, then "Add to Home Screen".</small></p><button class="btn ghost small" data-act="ioshint">OK</button></div>`;
     if (mist.length) h += `<div class="card banner fix"><p>Fix your mistakes<small>${mist.length} question${mist.length > 1 ? "s" : ""} to try again</small></p><button class="btn bad small" data-act="review">Fix</button></div>`;
-    SECTIONS.forEach((s, si) => {
-      const m = mastered(s.id);
-      h += `<section class="unit" id="unit-${s.id}"><div class="unit-head" style="--c:${COLORS[s.id]}"><div><h2>${s.name}</h2><p>${s.blurb.split(".")[0]}.</p></div><span class="count">${m}/${secSize(s.id)}</span></div><div class="path">`;
-      LESSONS.filter(l => l.sec === s.id).forEach((l, i) => {
-        const rec = S.lessons[l.id], done = rec && rec.done, isCur = l.id === cur;
-        const dx = Math.round(Math.sin((i + si * 2) * 1.25) * 64);
-        const inner = l.practice ? ic("dumb") : done ? ic("check") : `<span style="font-size:1.6rem;font-weight:900">${i + 1}</span>`;
-        const cls = l.practice ? "" : done ? "done" : isCur ? "" : "todo";
-        const stars = l.practice ? `<div class="node-label">∞ new questions</div>` : `<div class="stars">${[1, 2, 3].map(k => `<svg viewBox="0 0 24 24" class="${rec && rec.stars >= k ? "on" : ""}"><path d="${ICON.star}"/></svg>`).join("")}</div>`;
-        h += `<div class="node-wrap ${isCur ? "has-bubble" : ""}" style="--dx:${dx}px">${isCur ? `<span class="bubble">START</span>` : ""}<button class="node ${cls} ${isCur ? "current" : ""}"${cls === "todo" ? "" : ` style="--c:${COLORS[s.id]}"`} data-lesson="${l.id}" aria-label="${s.name}: ${l.title}">${inner}</button><div class="node-label">${l.title}</div>${stars}</div>`;
-      });
-      h += `</div></section>`;
+    SECTIONS.forEach(s => {
+      const m = mastered(s.id), isOpen = openUnit === s.id;
+      h += `<section class="unit" id="unit-${s.id}"><button class="unit-head" style="--c:${COLORS[s.id]}" data-open-unit="${s.id}" aria-expanded="${isOpen}"><div><p class="sec-tag">Sec ${s.id}</p><h2>${s.name}</h2><p>${s.blurb.split(".")[0]}.</p></div><div class="meta"><span class="count">${m}/${secSize(s.id)}</span><svg class="chev" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></div></button>`;
+      if (isOpen) h += portalHTML(s, cur);
+      h += `</section>`;
     });
     h += `<section class="unit" id="unit-later"><div class="unit-head" style="--c:var(--muted)"><div><h2>Later in Year 8</h2><p>Not in the autumn test. Extra practice for after half term.</p></div></div><div class="path">`;
     LATER.forEach((l, i) => {
@@ -226,6 +220,36 @@
     });
     h += `</div></section>`;
     view.innerHTML = h;
+    if (justOpenedUnit) { const id = justOpenedUnit; justOpenedUnit = null; playPortalOpen(id); }
+  }
+  // "Unit Portal": tap a unit's card to open a varoed door onto its 4 lessons, vested differently per
+  // skin (CSS tokens + per-skin background images do the dressing, see styles.css). The door art itself
+  // is the same photo split exactly in half for HUD/Forge/Steel (CSS background-position, no duplicate
+  // asset), CSS panels for Lab, a plain shutter for Classic.
+  function portalHTML(s, cur) {
+    const drawers = LESSONS.filter(l => l.sec === s.id).map((l, i) => {
+      const rec = S.lessons[l.id], done = rec && rec.done, isCur = l.id === cur;
+      const badge = l.practice ? ic("dumb") : done ? ic("check") : `<span style="font-size:1.1rem;font-weight:900">${i + 1}</span>`;
+      const sub = l.practice ? "new each time" : `${LEVEL_N[l.lvl]} questions`;
+      const stars = l.practice ? "" : `<div class="stars">${[1, 2, 3].map(k => `<svg viewBox="0 0 24 24" class="${rec && rec.stars >= k ? "on" : ""}"><path d="${ICON.star}"/></svg>`).join("")}</div>`;
+      return `<button class="drawer ${done ? "done" : ""}" style="--c:${COLORS[s.id]}" data-lesson="${l.id}" aria-label="${s.name}: ${l.title}">${isCur ? `<span class="bubble">START</span>` : ""}<div class="d-badge">${badge}</div><div class="d-label">${l.title}</div><div class="d-sub">${sub}</div>${stars}</button>`;
+    }).join("");
+    return `<div class="portal" id="portal-${s.id}"><div class="portal-stage">
+      <div class="portal-cap">Sec ${s.id} · ${esc(s.name)}</div>
+      <div class="portal-lens"></div>
+      <div class="doorset doorset-hud"><div class="photo-door photo-door-l hud-photo split-photo"></div><div class="photo-door photo-door-r hud-photo split-photo"></div></div>
+      <div class="doorset doorset-forge"><div class="photo-door photo-door-l forge-photo split-photo"></div><div class="photo-door photo-door-r forge-photo split-photo"></div></div>
+      <div class="doorset doorset-lab"><div class="lab-rings"></div><div class="lab-door lab-door-t"></div><div class="lab-door lab-door-b"></div></div>
+      <div class="doorset doorset-steel"><div class="photo-door photo-door-l steel-photo split-photo"></div><div class="photo-door photo-door-r steel-photo split-photo"></div></div>
+      <div class="doorset doorset-classic"><div class="classic-door"></div></div>
+      <div class="drawers">${drawers}</div>
+    </div></div>`;
+  }
+  function playPortalOpen(sec) {
+    const portal = document.getElementById("portal-" + sec); if (!portal) return;
+    if (reduced()) { portal.classList.add("doors-open", "show-drawers"); return; }
+    setTimeout(() => portal.classList.add("doors-open"), 500);
+    setTimeout(() => portal.classList.add("show-drawers"), 1150);
   }
 
   /* ---------- lesson engine ---------- */
@@ -233,11 +257,13 @@
     L = Object.assign({ queue: def.items.map(q => ({ q: q, again: 0 })), total: def.items.length, done: 0, first: 0, xp: 0, combo: 0, bestCombo: 0, start: Date.now(), cur: null, answered: 0 }, def);
     quitAsk = false; render(); next();
   }
+  const LEVEL_N = [7, 10, 10]; // questions drawn for Warm-up / Core / Challenge, from the pool (makeLevelPool)
   function startById(id) {
     const l = LESSONS.find(x => x.id === id); if (!l) return;
     let items;
     if (l.later) { const L2 = LATER.find(x => x.id === l.sec); items = makePractice(L2.key, 10, GENS_OLD).map(q => Object.assign(q, { sec: l.sec })); }
-    else items = l.practice ? makePractice(l.sec, 10) : l.qids.map(k => QB[k]);
+    else if (l.practice) items = makePractice(l.sec, 10);
+    else items = makeLevelPool(l.sec, l.lvl, LEVEL_N[l.lvl]);
     startLesson({ id: l.id, sec: l.sec, title: l.title, kind: l.practice ? "practice" : "bank", items: items });
   }
   function startReview(ids) {
@@ -449,10 +475,58 @@
   }
   function renderLaunchSplash() {
     view.innerHTML = `<button class="launch-splash" data-act="launch-enter" aria-label="Tap to enter IronMath">
+      <canvas class="launch-warp"></canvas>
       <img src="icons/icon-512.png" class="launch-icon" alt="">
       <div class="launch-hint">Tap to enter</div>
     </button>`;
     maybeGreet();
+    playWarp($(".launch-warp"));
+  }
+  // Launch-screen "warp" burst: white streaks with gold/cyan accents converging into the core icon.
+  // Fixed colours on purpose, same reasoning as .launch-splash above. Skips entirely under
+  // prefers-reduced-motion, per the project's non-negotiable animation rule.
+  function playWarp(canvas) {
+    if (!canvas || reduced()) { if (canvas) canvas.remove(); return; }
+    const ctx = canvas.getContext("2d");
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    const w = canvas.width = innerWidth * dpr, h = canvas.height = innerHeight * dpr;
+    canvas.style.width = innerWidth + "px"; canvas.style.height = innerHeight + "px";
+    const cx = w / 2, cy = h / 2;
+    const items = [];
+    for (let i = 0; i < 280; i++) {
+      const r = Math.random();
+      items.push({
+        angle: Math.random() * Math.PI * 2,
+        startR: Math.random() * 16 + 2,
+        speed: Math.random() * 0.8 + 0.7,
+        kind: r < 0.68 ? "white" : r < 0.88 ? "gold" : "cyan",
+        size: Math.random() * 1.2 + 1
+      });
+    }
+    const maxR = Math.hypot(w, h) / 2 + 40 * dpr, DURATION = 1200, start = performance.now();
+    function frame(now) {
+      if (!canvas.isConnected) return;
+      const t = Math.min(1, (now - start) / DURATION), eased = t * t;
+      ctx.clearRect(0, 0, w, h);
+      ctx.save();
+      ctx.globalCompositeOperation = "lighter";
+      items.forEach(p => {
+        const rr = p.startR * dpr + eased * maxR * p.speed;
+        const tailLen = (36 + eased * 260 * p.speed) * dpr;
+        const r0 = Math.max(p.startR * dpr, rr - tailLen);
+        const x1 = cx + Math.cos(p.angle) * r0, y1 = cy + Math.sin(p.angle) * r0;
+        const x2 = cx + Math.cos(p.angle) * rr, y2 = cy + Math.sin(p.angle) * rr;
+        const alpha = Math.min(1, 0.14 + eased * 0.7) * (1 - t * 0.15);
+        ctx.strokeStyle = p.kind === "cyan" ? `rgba(0,242,254,${alpha})` : p.kind === "gold" ? `rgba(245,185,66,${alpha})` : `rgba(255,255,255,${alpha})`;
+        ctx.lineWidth = p.size * (0.6 + eased * 1.4) * dpr;
+        ctx.lineCap = "round";
+        ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+      });
+      ctx.restore();
+      if (t < 1) requestAnimationFrame(frame);
+      else { canvas.style.opacity = "0"; setTimeout(() => canvas.remove(), 500); }
+    }
+    requestAnimationFrame(frame);
   }
   function enterApp() {
     LAUNCH = null;
@@ -765,6 +839,7 @@
       S.skin = t.dataset.skin; save(); return render();
     }
     if (t.dataset.lesson) return startById(t.dataset.lesson);
+    if (t.dataset.openUnit) { const id = t.dataset.openUnit; if (openUnit === id) { openUnit = null; } else { openUnit = id; justOpenedUnit = id; } return render(); }
     if (t.dataset.fix) return startReview([t.dataset.fix]);
     if (t.dataset.tpGo !== undefined) { const c = S.tp.current; if (c) { c.cur = +t.dataset.tpGo; save(); render(); } return; }
     if (t.dataset.unit) { go("learn"); const u = document.getElementById("unit-" + t.dataset.unit); if (u) u.scrollIntoView({ behavior: reduced() ? "auto" : "smooth" }); return; }
@@ -853,5 +928,5 @@
   if (S.best < streak()) S.best = streak();
   if (!S.hud.name) { HUD_ACT = {}; render(); }
   else { LAUNCH = {}; render(); }
-  window.__mt = { S: () => S, startById: startById, LESSONS: LESSONS, setSkin: id => { S.skin = id; save(); render(); }, startTestPrep: startTestPrep };
+  window.__mt = { S: () => S, startById: startById, LESSONS: LESSONS, setSkin: id => { S.skin = id; save(); render(); }, startTestPrep: startTestPrep, cur: () => L && L.cur && L.cur.q };
 })();

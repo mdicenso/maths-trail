@@ -135,3 +135,14 @@ GENS.E = [
   () => { const [a, b] = cop(2, 9), [c, d] = cop(2, 9), div = Math.random() < 0.5, num = div ? a * d : a * c, den = div ? b * c : b * d, s = fracStr(num, den);
     return G("E", `Work out {${a}/${b}} ${div ? "÷" : "×"} {${c}/${d}}.`, [N(s, { frac: true })], div ? `Keep, change, flip: {${a}/${b}} × {${d}/${c}} = {${num}/${den}}.` : `Multiply tops and bottoms: {${num}/${den}}.`, fracMark(s)); }
 ];
+
+// Which Warm-up(0)/Core(1)/Challenge(2) tier each GENS[sec] generator best matches (by index,
+// same order as the array above). Used by makeLevelPool() in gen.js to build the random pool
+// for Warm-up/Core/Challenge lessons, alongside the curated fixed questions for that level.
+const GENS_TIER = {
+  A: [0, 1, 1, 2, 0, 1, 2],
+  B: [0, 0, 2, 1, 2, 1, 0],
+  C: [0, 1, 2, 0, 1, 1, 2],
+  D: [0, 1, 0, 1, 2, 1, 2],
+  E: [0, 0, 2, 1, 1, 1, 2, 1, 2]
+};
